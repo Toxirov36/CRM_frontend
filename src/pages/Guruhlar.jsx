@@ -1,0 +1,1220 @@
+import React, { useState, useEffect } from "react";
+import Modal from "../components/Modal";
+
+const DAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"];
+
+const DAY_MAP = {
+  "Dushanba": "MONDAY",
+  "Seshanba": "TUESDAY",
+  "Chorshanba": "WEDNESDAY",
+  "Payshanba": "THURSDAY",
+  "Juma": "FRIDAY",
+  "Shanba": "SATURDAY",
+  "Yakshanba": "SUNDAY",
+};
+
+function ExpandedContent({ g, onClose }) {
+  const [activeTab, setActiveTab] = useState("Ma'lumotlar");
+  const [panels, setPanels] = useState({ mentors: true, academics: false, params: true });
+
+  const [selectedDayId, setSelectedDayId] = useState(null);
+  const [attendanceTab, setAttendanceTab] = useState("Teacher");
+  const [topicType, setTopicType] = useState("Boshqa");
+  const [topicName, setTopicName] = useState("CRM groupinner full");
+  const [studentsAttendance, setStudentsAttendance] = useState({ 1: true, 2: false });
+  
+  const [subTab, setSubTab] = useState("Darslar");
+  const [isAddingHomework, setIsAddingHomework] = useState(false);
+  const [selectedHomework, setSelectedHomework] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [checkingTab, setCheckingTab] = useState("Kutayotganlar");
+  const [homeworkScore, setHomeworkScore] = useState(60);
+
+  const studentsWithSubmission = [
+    { id: 1, name: "Nosirxon Ziyovutdinov", time: "15 May, 2026 09:54", status: "Kutayabti", files: 3 },
+    { id: 2, name: "Mirsaid Abduqulov", time: "15 May, 2026 04:57", status: "Kutayabti", files: 1 },
+    { id: 3, name: "Oydin Qalandarova Kamolovna", time: "14 May, 2026 17:06", status: "Kutayabti", files: 2 },
+    { id: 4, name: "Guliza Ayitqulova", time: "15 May, 2026 10:09", status: "Kutayabti", files: 3 },
+    { id: 5, name: "Mohirbek Solijonov", time: "15 May, 2026 06:48", status: "Kutayabti", files: 0 },
+  ];
+
+  const homeworks = [
+    { id: 41, title: "Youtube project added chat with socket.io", users: 18, pending: 0, completed: 11, assigned: "19 Yan, 2026 17:20", deadline: "20 Yan, 2026 09:20", date: "19 Yan, 2026" },
+    { id: 42, title: "socket.io", users: 18, pending: 0, completed: 7, assigned: "16 Yan, 2026 13:33", deadline: "17 Yan, 2026 05:33", date: "16 Yan, 2026" },
+    { id: 43, title: "UncaughtException and UnhandledRejection Concepts. Logging Concepts. Winston Logger.", users: 18, pending: 0, completed: 10, assigned: "15 Yan, 2026 15:23", deadline: "16 Yan, 2026 07:23", date: "15 Yan, 2026" },
+    { id: 44, title: "Sending Emails in Node.js (Gmail Setup, Nodemailer). User Activation via Email Confirmation.", users: 18, pending: 0, completed: 8, assigned: "14 Yan, 2026 15:04", deadline: "15 Yan, 2026 07:04", date: "14 Yan, 2026" },
+    { id: 45, title: "Applying Access and Refresh Token, Bcrypt, Validator, Middleware, Router, and Other Concepts in a Real Project.", users: 18, pending: 0, completed: 9, assigned: "12 Yan, 2026 13:06", deadline: "13 Yan, 2026 05:06", date: "12 Yan, 2026" },
+  ];
+
+  const toggleAttendance = (id) => {
+    setStudentsAttendance(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const togglePanel = (panel) => {
+    setPanels(p => ({ ...p, [panel]: !p[panel] }));
+  };
+
+  const schedules = [
+    { id: 1, name: "Sultonqulov Abduxoshim", days: "Du/Se/Ch/Pa/Ju", time: "09:30 dan - 12:30 gacha", dateRange: "15 Yan, 2026 - 27 Iyun, 2026", group: "F2 Autodesk // 18" },
+    { id: 2, name: "+++Yusupova Barchinoy", days: "Du/Se/Ch/Pa/Ju", time: "08:00 dan - 09:30 gacha", dateRange: "15 Yan, 2026 - 27 Iyun, 2026", group: "F2 Autodesk // 18" },
+  ];
+
+  const calendarDays = [
+    { id: 1, month: "Apr", day: "28", active: true },
+    { id: 2, month: "Apr", day: "29", active: true },
+    { id: 3, month: "Apr", day: "30", active: true },
+    { id: 4, month: "May", day: "01", active: true },
+    { id: 5, month: "May", day: "04", active: true },
+    { id: 6, month: "May", day: "05", active: true },
+    { id: 7, month: "May", day: "06", active: true },
+    { id: 8, month: "May", day: "07", active: true },
+    { id: 9, month: "May", day: "08", active: true },
+    { id: 10, month: "May", day: "11", active: true },
+    { id: 11, month: "May", day: "12", active: false },
+    { id: 12, month: "May", day: "13", active: false },
+    { id: 13, month: "May", day: "14", active: false },
+    { id: 14, month: "May", day: "15", active: false },
+    { id: 15, month: "May", day: "18", active: false },
+    { id: 16, month: "May", day: "19", active: false },
+    { id: 17, month: "May", day: "20", active: false },
+    { id: 18, month: "May", day: "21", active: false },
+    { id: 19, month: "May", day: "22", active: false },
+    { id: 20, month: "May", day: "25", active: false },
+  ];
+
+  return (
+    <div className="p-6 md:p-8 animate-in slide-in-from-top-2 duration-300 ease-out">
+      {/* Accordion Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 mr-2 transition-colors">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <h3 className="text-xl font-extrabold text-slate-800">{g.name}</h3>
+          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-50 text-green-500 border border-green-100 tracking-wide uppercase">
+            Aktiv
+          </span>
+        </div>
+        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-white shadow-sm transition-all active:scale-95 bg-gray-50">
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Statistika
+        </button>
+      </div>
+
+      {/* Accordion Tabs */}
+      <div className="flex gap-8 border-b border-gray-200/60 mb-6 overflow-x-auto custom-scrollbar">
+        {["Ma'lumotlar", "Guruh darsliklari", "Akademik davomati"].map(tab => (
+          <button 
+            key={tab} 
+            onClick={() => setActiveTab(tab)}
+            className={`pb-3 text-sm font-bold whitespace-nowrap relative transition-colors ${activeTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            {tab}
+            {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 rounded-t-full" />}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === "Ma'lumotlar" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Col */}
+          <div className="space-y-4">
+            {/* Guruh mentorlari */}
+            <div className="border border-[#2D78D2]/20 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+              <div 
+                onClick={() => togglePanel("mentors")}
+                className="bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white cursor-pointer select-none"
+              >
+                <h4 className="font-bold text-sm">Guruh mentorlari</h4>
+                <button className={`text-white/70 hover:text-white transition-transform duration-300 ${panels.mentors ? "rotate-180" : ""}`}>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+              <div className={`overflow-hidden transition-all duration-300 ${panels.mentors ? "max-h-[500px]" : "max-h-0"}`}>
+                <div className="p-6 flex flex-wrap gap-8 justify-center sm:justify-start">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-green-50 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl border-4 border-white shadow-sm">👾</div>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Teacher</p>
+                    <p className="text-xs font-bold text-slate-800 leading-tight mt-1.5">{g.teachers?.first_name || "Abduxoshim"}<br/>{g.teachers?.last_name || "Sultonqulov"}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-green-50 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl border-4 border-white shadow-sm">👾</div>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Assistant</p>
+                    <p className="text-xs font-bold text-slate-800 leading-tight mt-1.5">Umarxon<br/>+++Xodjaev</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-green-50 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl border-4 border-white shadow-sm">👾</div>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Assistant</p>
+                    <p className="text-xs font-bold text-slate-800 leading-tight mt-1.5">Barchinoy<br/>+++Yusupova</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Akademiklar */}
+            <div className="border border-gray-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+              <div 
+                onClick={() => togglePanel("academics")}
+                className="bg-slate-50/80 px-5 py-4 flex items-center justify-between text-slate-700 cursor-pointer select-none hover:bg-slate-100 transition-colors"
+              >
+                <h4 className="font-bold text-sm">Akademiklar va ularning o'qitgan soatlari</h4>
+                <button className={`text-slate-400 transition-transform duration-300 ${panels.academics ? "rotate-180" : ""}`}>
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+              <div className={`overflow-hidden transition-all duration-300 ${panels.academics ? "max-h-[500px] border-t border-gray-100" : "max-h-0"}`}>
+                <div className="p-6 text-sm text-slate-500 text-center">
+                  Hozircha ma'lumot yo'q.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Col */}
+          <div className="border border-[#2D78D2]/20 rounded-2xl overflow-hidden bg-white shadow-sm h-fit transition-all">
+            <div 
+              onClick={() => togglePanel("params")}
+              className="bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white cursor-pointer select-none"
+            >
+              <h4 className="font-bold text-sm">Parametrlar</h4>
+              <button className={`text-white/70 hover:text-white transition-transform duration-300 ${panels.params ? "rotate-180" : ""}`}>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div className={`overflow-hidden transition-all duration-300 ${panels.params ? "max-h-[1000px]" : "max-h-0"}`}>
+              <div className="p-5">
+                <table className="w-full text-[13px]">
+                  <tbody className="divide-y divide-gray-100/60">
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Filial:</td><td className="py-2.5 text-right font-bold text-[#00B2FF]">Chilonzor</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Kurs:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.name || "Bootcamp Full Stack NodeJS+VueJS"}</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Turi:</td><td className="py-2.5 text-right font-bold text-slate-800">BOOTCAMP</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Kategoriya:</td><td className="py-2.5 text-right font-bold text-slate-800">Programming</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">To'lov turi:</td><td className="py-2.5 text-right font-bold text-slate-800">T|Bootcamp Fullstack|oyma-oy|03/07/2025</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">O'rta yosh:</td><td className="py-2.5 text-right font-bold text-slate-800">25</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">O'quvchilar sig'imi:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.max_student || 19}</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Mavjud o'quvchilar:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.students || 24}</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Shartnomalar:</td><td className="py-2.5 text-right font-bold text-slate-800">18</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">O'quv oyidagi darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800">20</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium">Kurs davomiyligi (oy):</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.duration_month || 8.0}</td></tr>
+                    <tr><td className="py-2.5 text-slate-500 font-medium border-b-0">Jami darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800 border-b-0">160</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "Guruh darsliklari" && (
+        <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-6 mt-2">
+          
+          {/* Sub-tabs Header */}
+          <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-6">
+              <h2 
+                className={`text-[15px] font-extrabold cursor-pointer transition-colors ${subTab === "Darslar" ? "text-slate-800" : "text-slate-400 hover:text-slate-600"}`}
+                onClick={() => setSubTab("Darslar")}
+              >
+                Guruh darsliklari
+              </h2>
+              
+              <div className="flex bg-slate-50/80 p-1 rounded-[10px] border border-gray-100/50">
+                {["Uyga vazifa", "Videolar", "Imtihonlar", "Jurnal"].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setSubTab(tab);
+                      setIsAddingHomework(false);
+                      setSelectedHomework(null);
+                      setSelectedSubmission(null);
+                    }}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      subTab === tab ? "bg-white text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.05)]" : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {subTab === "Uyga vazifa" && !isAddingHomework && !selectedHomework && (
+              <button 
+                onClick={() => setIsAddingHomework(true)}
+                className="px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]"
+              >
+                Uyga vazifa qo'shish
+              </button>
+            )}
+          </div>
+
+          {/* Darslar Tab (Calendar + Attendance) */}
+          {subTab === "Darslar" && (
+            <div className="animate-in fade-in duration-300">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <span className="text-[13px] font-extrabold text-slate-700">7-o'quv oyi</span>
+                  <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar">
+                  {calendarDays.map(day => (
+                    <div 
+                      key={day.id} 
+                      onClick={() => setSelectedDayId(day.id)}
+                      className={`shrink-0 w-[52px] h-[60px] rounded-[14px] flex flex-col items-center justify-center transition-colors cursor-pointer select-none
+                        ${selectedDayId === day.id 
+                          ? "bg-emerald-500 text-white shadow-md shadow-emerald-200" 
+                          : day.active 
+                            ? "bg-[#E6E8EA] text-slate-700 hover:bg-gray-300/60" 
+                            : "bg-white border border-gray-100 text-slate-500 hover:border-gray-200"}
+                      `}
+                    >
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedDayId === day.id ? "text-emerald-50" : ""}`}>{day.month}</span>
+                      <span className="text-[15px] font-extrabold mt-0.5">{day.day}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {!selectedDayId ? (
+                <div className="animate-in fade-in duration-300">
+                   <h2 className="text-[15px] font-extrabold text-slate-800 mb-5">Dars jadvali</h2>
+                   <div className="space-y-3">
+                     {schedules.map(item => (
+                       <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-50/70 rounded-xl border border-gray-100/60 hover:bg-slate-50 transition-colors gap-4">
+                         <div className="text-[13px] font-bold text-[#00B2FF] flex-1">{item.name}</div>
+                         <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center">{item.days}</div>
+                         <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center whitespace-nowrap">{item.time}</div>
+                         <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center whitespace-nowrap">{item.dateRange}</div>
+                         <div className="text-[13px] font-bold text-slate-700 flex-1 md:text-right">{item.group}</div>
+                       </div>
+                     ))}
+                   </div>
+                   <div className="mt-5 flex justify-center">
+                     <button className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-400 hover:bg-gray-50 transition-colors">
+                       Yana ko'rsatish (9)
+                     </button>
+                   </div>
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 border-t border-gray-100 pt-6">
+                    {/* Tabs: Assistant / Teacher */}
+                    <div className="flex gap-6 border-b border-gray-100 mb-6">
+                       {["Assistant", "Teacher"].map(tab => (
+                         <button 
+                           key={tab}
+                           onClick={() => setAttendanceTab(tab)}
+                           className={`pb-3 text-sm font-bold relative transition-colors ${attendanceTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
+                         >
+                           {tab}
+                           {attendanceTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 rounded-t-full" />}
+                         </button>
+                       ))}
+                    </div>
+
+                    {/* Ma'lumot Card */}
+                    <div className="bg-slate-50 rounded-2xl p-6 mb-8 w-fit min-w-[400px]">
+                      <h4 className="font-extrabold text-sm text-slate-800 mb-4">Ma'lumot</h4>
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white">
+                          <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">Sultonqulov Abduxoshim</p>
+                          <p className="text-xs font-semibold text-slate-500 mt-0.5">Teacher</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-8 bg-white p-4 rounded-xl border border-gray-100 shadow-sm overflow-x-auto custom-scrollbar">
+                        <div className="shrink-0">
+                          <p className="text-[10px] text-slate-400 font-bold mb-1">Dars kuni</p>
+                          <p className="text-xs font-bold text-slate-700">11 May, 2026</p>
+                        </div>
+                        <div className="shrink-0">
+                          <p className="text-[10px] text-slate-400 font-bold mb-1">Dars vaqti</p>
+                          <p className="text-xs font-bold text-slate-700">09:30 - 12:30</p>
+                        </div>
+                        <div className="shrink-0">
+                          <p className="text-[10px] text-slate-400 font-bold mb-1">Filial</p>
+                          <p className="text-xs font-bold text-slate-700">Chilonzor</p>
+                        </div>
+                        <div className="shrink-0">
+                          <p className="text-[10px] text-slate-400 font-bold mb-1">Xona</p>
+                          <p className="text-xs font-bold text-slate-700">F2 Autodesk // 18</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Group Title */}
+                    <h3 className="text-[15px] font-extrabold text-slate-800 mb-6">Bootcamp Full Stack N26 11.05.2026</h3>
+
+                    {/* Yo'qlama va mavzu kiritish */}
+                    <div className="mb-6">
+                      <h4 className="font-extrabold text-[15px] text-slate-800 mb-5">Yo'qlama va mavzu kiritish</h4>
+                      
+                      <div className="flex items-center gap-6 mb-6">
+                        <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold transition-colors ${topicType === "O'quv reja" ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${topicType === "O'quv reja" ? "border-emerald-500" : "border-gray-300"}`}>
+                            {topicType === "O'quv reja" && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                          </div>
+                          <input type="radio" className="hidden" checked={topicType === "O'quv reja"} onChange={() => setTopicType("O'quv reja")} />
+                          O'quv reja bo'yicha
+                        </label>
+                        <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold transition-colors ${topicType === "Boshqa" ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${topicType === "Boshqa" ? "border-emerald-500" : "border-gray-300"}`}>
+                            {topicType === "Boshqa" && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                          </div>
+                          <input type="radio" className="hidden" checked={topicType === "Boshqa"} onChange={() => setTopicType("Boshqa")} />
+                          Boshqa
+                        </label>
+                      </div>
+
+                      <div className="mb-8 w-full max-w-md">
+                        <label className="block text-xs font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
+                        <input 
+                          type="text" 
+                          className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-700 focus:border-emerald-400 transition-colors font-semibold"
+                          value={topicName}
+                          onChange={e => setTopicName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Students Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-gray-100">
+                            <th className="py-3 px-4 w-12">#</th>
+                            <th className="py-3 px-4">O'quvchi ismi</th>
+                            <th className="py-3 px-4 w-32">Vaqti</th>
+                            <th className="py-3 px-4 w-24">Keldi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          <tr className="hover:bg-slate-50 transition-colors">
+                            <td className="py-4 px-4 text-xs font-bold text-slate-700">1</td>
+                            <td className="py-4 px-4 text-xs font-bold text-slate-700">Abdugapparova Nozima</td>
+                            <td className="py-4 px-4 text-xs font-bold text-slate-700">09:30</td>
+                            <td className="py-4 px-4">
+                              <div onClick={() => toggleAttendance(1)} className={`w-10 h-5 rounded-full p-0.5 cursor-pointer flex transition-colors ${studentsAttendance[1] ? "bg-emerald-400 justify-end" : "bg-gray-200 justify-start"}`}>
+                                <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                              </div>
+                            </td>
+                          </tr>
+                          <tr className="hover:bg-slate-50 transition-colors">
+                            <td className="py-4 px-4 text-xs font-bold text-slate-700">2</td>
+                            <td className="py-4 px-4 text-xs font-bold text-slate-700">Abduqulov Mirsaid</td>
+                            <td className="py-4 px-4 text-xs font-bold text-slate-700">09:30</td>
+                            <td className="py-4 px-4">
+                              <div onClick={() => toggleAttendance(2)} className={`w-10 h-5 rounded-full p-0.5 cursor-pointer flex transition-colors ${studentsAttendance[2] ? "bg-emerald-400 justify-end" : "bg-gray-200 justify-start"}`}>
+                                <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Uyga Vazifa Tab (Asosiy ro'yxat) */}
+          {subTab === "Uyga vazifa" && !isAddingHomework && !selectedHomework && (
+            <div className="overflow-x-auto animate-in fade-in duration-300">
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="text-[11px] font-bold text-slate-400 border-b border-gray-100">
+                    <th className="py-4 px-2 w-10">#</th>
+                    <th className="py-4 px-2">Mavzu</th>
+                    <th className="py-4 px-2 w-12 text-center text-slate-400">
+                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </th>
+                    <th className="py-4 px-2 w-12 text-center text-yellow-500">
+                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </th>
+                    <th className="py-4 px-2 w-12 text-center text-emerald-500">
+                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                    </th>
+                    <th className="py-4 px-2 w-32">Berilgan vaqt</th>
+                    <th className="py-4 px-2 w-32">Tugash vaqti</th>
+                    <th className="py-4 px-2 w-28">Dars sanasi</th>
+                    <th className="py-4 px-2 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {homeworks.map((hw, i) => (
+                    <tr key={hw.id} onClick={() => setSelectedHomework(hw)} className="hover:bg-slate-50 transition-colors group cursor-pointer">
+                      <td className="py-4 px-2 text-[13px] font-bold text-slate-500">{hw.id}</td>
+                      <td className="py-4 px-2 text-[13px] font-bold text-slate-800 pr-8 leading-snug">{hw.title}</td>
+                      <td className="py-4 px-2 text-[13px] font-bold text-slate-700 text-center">{hw.users}</td>
+                      <td className="py-4 px-2 text-[13px] font-bold text-slate-700 text-center">{hw.pending}</td>
+                      <td className="py-4 px-2 text-[13px] font-bold text-slate-700 text-center">{hw.completed}</td>
+                      <td className="py-4 px-2 text-[13px] font-semibold text-slate-600">
+                        {hw.assigned.split(" ")[0]} {hw.assigned.split(" ")[1]} <br/> <span className="text-slate-400">{hw.assigned.split(" ")[2]}</span>
+                      </td>
+                      <td className="py-4 px-2 text-[13px] font-semibold text-slate-600">
+                        {hw.deadline.split(" ")[0]} {hw.deadline.split(" ")[1]} <br/> <span className="text-slate-400">{hw.deadline.split(" ")[2]}</span>
+                      </td>
+                      <td className="py-4 px-2 text-[13px] font-semibold text-slate-600">{hw.date}</td>
+                      <td className="py-4 px-2 text-right">
+                        <button className="text-slate-400 hover:text-slate-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Homework Checking View (Image 1) */}
+          {subTab === "Uyga vazifa" && selectedHomework && !selectedSubmission && (
+            <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+               <button 
+                 onClick={() => setSelectedHomework(null)} 
+                 className="flex items-center gap-2 text-slate-800 font-extrabold text-lg mb-8 transition-colors hover:text-emerald-600"
+               >
+                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+                 {selectedHomework.title}
+               </button>
+
+               <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
+                 <div className="flex gap-16">
+                   <div>
+                     <p className="text-xs font-bold text-slate-400 mb-1">Mavzu</p>
+                     <p className="text-[15px] font-extrabold text-slate-800">{selectedHomework.title}</p>
+                   </div>
+                   <div>
+                     <p className="text-xs font-bold text-slate-400 mb-1">Tugash vaqti</p>
+                     <p className="text-[15px] font-bold text-slate-800">{selectedHomework.deadline}</p>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Tabs */}
+               <div className="flex gap-8 border-b border-gray-100 mb-6 px-2">
+                 {[
+                   { name: "Kutayotganlar", count: 5 },
+                   { name: "Qaytarilganlar", count: 0 },
+                   { name: "Qabul qilinganlar", count: 0 },
+                   { name: "Bajarilmagan", count: 6 },
+                 ].map(tab => (
+                   <button
+                     key={tab.name}
+                     onClick={() => setCheckingTab(tab.name)}
+                     className={`pb-3 text-[13px] font-bold relative transition-colors flex items-center gap-2 ${checkingTab === tab.name ? "text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                   >
+                     {tab.name}
+                     {tab.count > 0 && (
+                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${checkingTab === tab.name ? "bg-yellow-400 text-yellow-900" : "bg-yellow-100 text-yellow-700"}`}>
+                         {tab.count}
+                       </span>
+                     )}
+                     {checkingTab === tab.name && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500 rounded-t-full" />}
+                   </button>
+                 ))}
+               </div>
+
+               {/* Table */}
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left border-collapse">
+                   <thead>
+                     <tr className="text-xs font-bold text-slate-400 border-b border-gray-100">
+                       <th className="py-4 px-4 w-1/2">O'quvchi ismi</th>
+                       <th className="py-4 px-4 w-1/2">Uyga vazifa jo'natilgan vaqt</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-50">
+                     {studentsWithSubmission.map(student => (
+                       <tr key={student.id} onClick={() => setSelectedSubmission(student)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                         <td className="py-4 px-4 text-[13px] font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">{student.name}</td>
+                         <td className="py-4 px-4 text-[13px] font-semibold text-slate-600">{student.time}</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          )}
+
+          {/* Student Submission Grading View (Image 2 & 3) */}
+          {subTab === "Uyga vazifa" && selectedHomework && selectedSubmission && (
+            <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+               {/* Breadcrumbs */}
+               <div className="flex items-center gap-2 text-slate-800 font-extrabold text-[15px] mb-8">
+                 <button onClick={() => setSelectedSubmission(null)} className="hover:text-emerald-600 transition-colors">
+                   {checkingTab}
+                 </button>
+                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-400" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                 <span className="text-slate-500">Uyga vazifa</span>
+               </div>
+
+               <div className="max-w-4xl space-y-6">
+                 {/* Uy vazifasi */}
+                 <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
+                   <h3 className="text-[15px] font-extrabold text-slate-800 mb-4">Uy vazifasi</h3>
+                   <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                     <p className="text-[13px] font-semibold text-slate-400 mb-2">Izoh:</p>
+                     <p className="text-[14px] font-semibold text-slate-800">{selectedHomework.title}</p>
+                   </div>
+                 </div>
+
+                 {/* Student Info */}
+                 <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
+                   <h3 className="text-[18px] font-extrabold text-slate-800 mb-6">{selectedSubmission.name}</h3>
+                   
+                   <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm flex items-center gap-12 mb-6">
+                     <div>
+                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Vaqti:</p>
+                       <p className="text-[14px] font-extrabold text-slate-800">{selectedSubmission.time}</p>
+                     </div>
+                     <div>
+                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Fayllar soni:</p>
+                       <p className="text-[14px] font-extrabold text-slate-800">{selectedSubmission.files}</p>
+                     </div>
+                     <div>
+                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Status:</p>
+                       <span className="inline-block px-3 py-1 bg-yellow-50 border border-yellow-200 text-yellow-600 text-[11px] font-extrabold rounded-md">
+                         {selectedSubmission.status}
+                       </span>
+                     </div>
+                   </div>
+
+                   <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                     <p className="text-[14px] font-semibold text-slate-500 mb-4">Fayl: <span className="font-extrabold text-slate-800">{selectedSubmission.files}</span></p>
+                     <div className="flex gap-4 mb-6">
+                       {/* Mock images */}
+                       <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
+                         <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
+                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                       </div>
+                       <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
+                         <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
+                       </div>
+                       <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
+                         <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
+                       </div>
+                     </div>
+
+                     <div className="bg-slate-50 rounded-xl p-4 border border-gray-100 border-l-4 border-l-blue-500">
+                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Uyga vazifa izohi:</p>
+                       <a href="#" className="text-[14px] font-bold text-blue-600 hover:underline break-all">
+                         https://github.com/{selectedSubmission.name.split(" ")[0]}/CRM_Fullsatck:
+                       </a>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Grading Box */}
+                 <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
+                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3 mb-8">
+                     <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">i</div>
+                     <p className="text-sm font-semibold text-blue-800">
+                       60-100 oralig'ida ball qo'yilgan vazifa 'Qabul qilingan', 0-59 oralig'ida ball qo'yilgan vazifa 'Qaytarilgan' hisoblanadi.
+                     </p>
+                   </div>
+
+                   <div className="mb-10">
+                     <h4 className="text-[15px] font-extrabold text-slate-800 mb-6">Ball</h4>
+                     <div className="flex items-center gap-6">
+                       <div className="flex-1 relative">
+                         <input 
+                           type="range" 
+                           min="0" max="100" 
+                           value={homeworkScore} 
+                           onChange={e => setHomeworkScore(e.target.value)}
+                           className="w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer outline-none overflow-hidden"
+                           style={{
+                             background: `linear-gradient(to right, #10B981 0%, #10B981 ${homeworkScore}%, #E5E7EB ${homeworkScore}%, #E5E7EB 100%)`
+                           }}
+                         />
+                         <div className="absolute top-1/2 left-[60%] w-3 h-3 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-sm pointer-events-none"></div>
+                         <p className="absolute -bottom-6 left-[60%] -translate-x-1/2 text-xs font-bold text-slate-500">O'tish bali</p>
+                       </div>
+                       <div className="w-16 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center font-bold text-slate-800 text-[15px] shadow-sm">
+                         {homeworkScore}
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="mb-6">
+                     <h4 className="text-[15px] font-extrabold text-slate-800 mb-4">Fayllar</h4>
+                     <button className="w-full py-8 border border-dashed border-emerald-400 bg-emerald-50/30 rounded-2xl text-center hover:bg-emerald-50/60 transition-colors group">
+                       <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 mx-auto mb-3 group-hover:scale-110 transition-transform">
+                         <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                       </div>
+                       <p className="text-[15px] font-extrabold text-slate-800 mb-2">Faylni yuklash uchun ushbu hudud ustiga bosing yoki faylni shu yerga olib keling</p>
+                       <p className="text-[13px] font-semibold text-slate-400">.jpg, .png, .pdf, .mp4, .docs formatlaridan birida bo'lishi mumkin</p>
+                     </button>
+                   </div>
+
+                   <div className="mb-8 relative">
+                     <textarea 
+                       className="w-full h-24 p-4 pr-12 bg-slate-50 border border-gray-100 rounded-xl outline-none text-sm font-semibold text-slate-700 resize-none focus:border-emerald-400 transition-colors"
+                       placeholder="Izohingiz"
+                     ></textarea>
+                     <button className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-200">
+                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                     </button>
+                   </div>
+
+                   <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
+                     <button className="px-6 py-2.5 rounded-xl border border-gray-200 text-[13px] font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                       Bekor qilish
+                     </button>
+                     <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-[13px] font-bold hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]">
+                       Yuborish
+                     </button>
+                   </div>
+                 </div>
+               </div>
+            </div>
+          )}
+
+          {/* Yangi Uyga Vazifa Form */}
+          {subTab === "Uyga vazifa" && isAddingHomework && (
+            <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+               <button 
+                 onClick={() => setIsAddingHomework(false)} 
+                 className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-extrabold text-sm mb-8 transition-colors"
+               >
+                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+                 Yangi uyga vazifa yaratish
+               </button>
+               
+               <div className="max-w-3xl">
+                 <div className="mb-6">
+                   <label className="block text-[13px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
+                   <select className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-500 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-colors appearance-none cursor-pointer">
+                     <option>Mavzulardan birini tanlang</option>
+                     <option>Youtube project added chat with socket.io</option>
+                     <option>socket.io</option>
+                   </select>
+                 </div>
+
+                 <div className="mb-6">
+                   <label className="block text-[13px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Izoh</label>
+                   <div className="border border-gray-200 rounded-xl overflow-hidden bg-white focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-50 transition-all">
+                     {/* Editor Toolbar */}
+                     <div className="flex items-center gap-4 p-3 border-b border-gray-100 bg-slate-50/50 flex-wrap">
+                       <div className="flex gap-2 text-slate-500 font-bold text-sm">
+                         <button className="px-1 hover:text-slate-900 transition-colors">H1</button>
+                         <button className="px-1 hover:text-slate-900 transition-colors">H2</button>
+                       </div>
+                       <div className="h-4 w-px bg-gray-200"></div>
+                       <button className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">Sans Serif <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+                       <button className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">Normal <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+                       <div className="h-4 w-px bg-gray-200"></div>
+                       <div className="flex gap-3 text-slate-500">
+                         <button className="font-bold hover:text-slate-900 transition-colors">B</button>
+                         <button className="italic hover:text-slate-900 transition-colors font-serif">I</button>
+                         <button className="underline hover:text-slate-900 transition-colors">U</button>
+                         <button className="line-through hover:text-slate-900 transition-colors">S</button>
+                         <button className="hover:text-slate-900 transition-colors">"</button>
+                         <button className="hover:text-slate-900 transition-colors">&lt;/&gt;</button>
+                       </div>
+                       <div className="h-4 w-px bg-gray-200"></div>
+                       <div className="flex gap-3 text-slate-500">
+                         <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></button>
+                         <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 4h4v4H3zm6 1h12v2H9zm-6 5h4v4H3zm6 1h12v2H9zm-6 5h4v4H3zm6 1h12v2H9z"/></svg></button>
+                         <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                       </div>
+                     </div>
+                     <textarea className="w-full p-4 h-40 outline-none text-[13px] font-medium resize-none text-slate-700" placeholder=""></textarea>
+                   </div>
+                 </div>
+
+                 <div className="mb-8">
+                   <button className="w-full py-4 border border-dashed border-gray-300 rounded-xl text-slate-400 font-bold text-sm hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-500 transition-colors flex items-center justify-center gap-2">
+                     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                     Yuklash
+                   </button>
+                 </div>
+
+                 <div className="flex items-center justify-end gap-3">
+                   <button 
+                     onClick={() => setIsAddingHomework(false)} 
+                     className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                   >
+                     Bekor qilish
+                   </button>
+                   <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]">
+                     E'lon qilish
+                   </button>
+                 </div>
+               </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {activeTab === "Akademik davomati" && (
+        <div className="p-8 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-gray-100 mt-4">
+          Hozircha davomat ma'lumotlari mavjud emas.
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Guruhlar() {
+  const [activeTab, setActiveTab] = useState("Guruhlar");
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [form, setForm] = useState({
+    name: "",
+    course_id: "",
+    teacher_id: "",
+    room_id: "",
+    start_date: "",
+    week_day: [],
+    start_time: "",
+    max_student: "",
+  });
+
+  const [stats, setStats] = useState({ groups: 0, teachers: 0, students: 0 });
+  const [expandedRowId, setExpandedRowId] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const filteredGroups = groups.filter(g => {
+    const q = search.toLowerCase();
+    const name = g.name?.toLowerCase() || "";
+    const course = g.courses?.name?.toLowerCase() || "";
+    const teacherName = `${g.teachers?.first_name || ""} ${g.teachers?.last_name || ""}`.toLowerCase();
+    return name.includes(q) || course.includes(q) || teacherName.includes(q);
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const headers = { "accept": "*/*", "Authorization": `Bearer ${token}` };
+
+    const fetchAll = async () => {
+      try {
+        const [groupsRes, teachersRes, studentsRes] = await Promise.all([
+          fetch("/api/v1/groups/all", { headers }),
+          fetch("/api/v1/teachers", { headers }),
+          fetch("/api/v1/students", { headers }),
+        ]);
+
+        const [groupsData, teachersData, studentsData] = await Promise.all([
+          groupsRes.json(),
+          teachersRes.json(),
+          studentsRes.json(),
+        ]);
+
+        const groupsList = Array.isArray(groupsData.data) ? groupsData.data : [];
+        setGroups(groupsList);
+
+        setStats({
+          groups: groupsList.length,
+          teachers: teachersData.total || teachersData.data?.length || 0,
+          students: studentsData.total || studentsData.data?.length || 0,
+        });
+
+      } catch (err) {
+        setError("Ma'lumotlarni yuklashda xatolik");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.course_id || !form.start_date || !form.start_time) {
+      alert("Iltimos, barcha majburiy maydonlarni to'ldiring");
+      return;
+    }
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/groups", {
+        method: "POST",
+        headers: {
+          "accept": "*/*",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          description: "",
+          course_id: Number(form.course_id),
+          teacher_id: Number(form.teacher_id) || undefined,
+          room_id: Number(form.room_id) || undefined,
+          start_date: form.start_date,
+          week_day: form.week_day,
+          start_time: form.start_time,
+          max_student: Number(form.max_student) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || "Xatolik yuz berdi");
+        return;
+      }
+      await fetchGroups();
+      setShowAdd(false);
+      setForm({ name: "", course_id: "", teacher_id: "", room_id: "", start_date: "", week_day: [], start_time: "", max_student: "" });
+    } catch (err) {
+      alert("Server bilan bog'lanishda xatolik");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleDay = (day) => {
+    const eng = DAY_MAP[day];
+    setForm(f => ({
+      ...f,
+      week_day: f.week_day.includes(eng)
+        ? f.week_day.filter(d => d !== eng)
+        : [...f.week_day, eng],
+    }));
+  };
+
+  const toggleActive = (id) => {
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, isActive: !g.isActive } : g));
+  };
+
+  return (
+    <div className="pb-10">
+      {/* Tabs */}
+      <div className="flex items-center justify-between border-b border-gray-100 mb-8">
+        <div className="flex gap-8">
+          {["Guruhlar", "Arxiv"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-4 text-sm font-bold transition-all relative ${activeTab === tab ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
+                }`}
+            >
+              {tab}
+              {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full" />}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95 mb-2"
+        >
+          + Guruh qo'shish
+        </button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {[
+          {
+            label: "Jami guruhlar", value: `${stats.groups}`, icon: (
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            ), color: "bg-slate-50 text-slate-400"
+          },
+          {
+            label: "O'qituvchilar", value: `${stats.teachers}`, icon: (
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="7" cy="12" r="3" /><circle cx="17" cy="12" r="3" /><path d="M10 12h4" /><path d="M2 12a10 10 0 0 1 20 0" /></svg>
+            ), color: "bg-slate-50 text-slate-400"
+          },
+          {
+            label: "O'quvchilar", value: `${stats.students}`, icon: (
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" /></svg>
+            ), color: "bg-slate-50 text-slate-400"
+          },
+        ].map(stat => (
+          <div key={stat.label} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative group">
+            <div className={`w-8 h-8 rounded-lg ${stat.color} flex items-center justify-center mb-4 transition-colors`}>
+              {stat.icon}
+            </div>
+            <p className="text-slate-400 text-[13px] font-medium mb-1">{stat.label}</p>
+            <h3 className="text-3xl font-extrabold text-slate-900 leading-tight">{stat.value}</h3>
+            <div className="absolute top-4 right-4 text-slate-200">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3"></div>
+        <div className="flex items-center gap-3 flex-1 max-w-md md:justify-end">
+          <div className="relative flex-1 max-w-xs">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            </div>
+            <input
+              className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+              placeholder="Search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1100px]">
+            <thead>
+              <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-50">
+                <th className="py-4 px-6">Status</th>
+                <th className="py-4 px-6">Guruh</th>
+                <th className="py-4 px-6">Kurs</th>
+                <th className="py-4 px-6">Davomiyligi</th>
+                <th className="py-4 px-6">Dars vaqti</th>
+                <th className="py-4 px-6">Kim qo'shgan</th>
+                <th className="py-4 px-6">Xona</th>
+                <th className="py-4 px-6">O'qituvchi</th>
+                <th className="py-4 px-6">Talabalar</th>
+                <th className="py-4 px-6 text-right pr-6">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredGroups.map(g => (
+                <React.Fragment key={g.id}>
+                <tr 
+                  className={`group transition-colors cursor-pointer ${expandedRowId === g.id ? "bg-slate-50/80" : "hover:bg-slate-50/50"}`}
+                  onClick={() => setExpandedRowId(expandedRowId === g.id ? null : g.id)}
+                >
+                  <td className="py-5 px-6">
+                    <div className="flex items-center gap-3">
+                      <div
+                        onClick={(e) => { e.stopPropagation(); toggleActive(g.id); }}
+                        className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${g.isActive ?? g.status === "ACTIVE" ? "bg-indigo-600" : "bg-gray-200"}`}
+                      >
+                        <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${g.isActive ?? g.status === "ACTIVE" ? "translate-x-4" : ""}`} />
+                      </div>
+                      <span className={`text-[10px] font-bold tracking-tight ${g.status === "ACTIVE" ? "text-green-500" : "text-slate-400"}`}>
+                        {g.status || "ACTIVE"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-5 px-6 font-bold text-slate-800 text-sm">{g.name}</td>
+                  <td className="py-5 px-6">
+                    <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold border border-purple-100 text-purple-400">
+                      {g.courses?.name || "—"}
+                    </span>
+                  </td>
+                  <td className="py-5 px-6">
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-xs font-bold text-slate-700">{g.courses.duration_month || "—"} oy</span>
+                      <span className="text-[10px] text-slate-400 font-medium mt-1">
+                        {g.start_date?.slice(0, 10) || "—"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-5 px-6">
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-xs font-bold text-slate-700">{g.start_time || "—"}</span>
+                      {/* <span className="text-[10px] text-slate-400 font-medium mt-1">{g.days || g.lessonDays || "—"}</span> */}
+                    </div>
+                  </td>
+                  <td className="py-5 px-6">
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-xs font-bold text-slate-700">{g.addedBy || g.created_by || "—"}</span>
+                      <span className="text-[10px] text-slate-400 font-medium mt-1">{g.addedAt || g.created_at || "—"}</span>
+                    </div>
+                  </td>
+                  <td className="py-5 px-6 text-xs text-slate-500 font-medium">
+                    {g.rooms?.name || "—"}
+                  </td>
+                  <td className="py-5 px-6">
+                    <div className="flex items-center gap-2">
+                      {(g.mentor || g.teacher) && (
+                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-[10px] font-bold border border-gray-200">
+                          {(g.teachers?.first_name + " " + g.teachers?.last_name || g.mentor || g.teacher || "").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-xs font-medium text-slate-700">
+                        {g.teachers?.first_name + " " + g.teachers?.last_name || g.mentor || g.teacher || "O'qituvchi yo'q"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-5 px-6 text-sm font-bold text-slate-800">
+                    {g.students || g.studentCount || g.students_count || 0}
+                  </td>
+                  <td className="py-5 px-6 text-right pr-6" onClick={e => e.stopPropagation()}>
+                    <button className="text-slate-300 hover:text-slate-600 transition-colors">
+                      <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
+                    </button>
+                  </td>
+                </tr>
+                
+                {/* Accordion Row */}
+                {expandedRowId === g.id && (
+                  <tr>
+                    <td colSpan="10" className="p-0 border-b border-gray-100 bg-slate-50/30">
+                      <ExpandedContent g={g} onClose={() => setExpandedRowId(null)} />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Group Modal */}
+      {showAdd && (
+        <Modal
+          title="Guruh qo'shish"
+          subtitle="Yangi guruh yaratish uchun quyidagi ma'lumotlarni kiriting."
+          onClose={() => setShowAdd(false)}
+          footer={
+            <>
+              <button onClick={() => setShowAdd(false)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
+                Bekor qilish
+              </button>
+              <button onClick={handleSave} disabled={saving} className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition-all active:scale-95">
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            {/* Guruh nomi */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Guruh nomi <span className="text-red-500">*</span></label>
+              <input
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                placeholder="Masalan: Frontend-1"
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+
+            {/* Kurs ID */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kurs ID <span className="text-red-500">*</span></label>
+              <input
+                type="number"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                placeholder="Masalan: 1"
+                value={form.course_id}
+                onChange={e => setForm(f => ({ ...f, course_id: e.target.value }))}
+              />
+            </div>
+
+            {/* O'qituvchi ID */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">O'qituvchi ID</label>
+              <input
+                type="number"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                placeholder="Masalan: 2"
+                value={form.teacher_id}
+                onChange={e => setForm(f => ({ ...f, teacher_id: e.target.value }))}
+              />
+            </div>
+
+            {/* Xona ID */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Xona ID</label>
+              <input
+                type="number"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                placeholder="Masalan: 3"
+                value={form.room_id}
+                onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
+              />
+            </div>
+
+            {/* Dars kunlari */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Dars kunlari</label>
+              <div className="grid grid-cols-2 gap-2">
+                {DAYS.map(day => (
+                  <label key={day} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.week_day.includes(DAY_MAP[day])}
+                      onChange={() => toggleDay(day)}
+                      className="accent-indigo-600 w-4 h-4"
+                    />
+                    <span className="text-sm text-slate-700">{day}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Boshlanish sanasi va vaqti */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Boshlanish sanasi <span className="text-red-500">*</span></label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                  value={form.start_date}
+                  onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Dars vaqti <span className="text-red-500">*</span></label>
+                <input
+                  type="time"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                  value={form.start_time}
+                  onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Max talaba soni */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Maksimal talabalar soni</label>
+              <input
+                type="number"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
+                placeholder="Masalan: 20"
+                value={form.max_student}
+                onChange={e => setForm(f => ({ ...f, max_student: e.target.value }))}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+
+      {/* Delete confirm */}
+      {deleteId && (
+        <Modal
+          title="Guruhni o'chirish"
+          onClose={() => setDeleteId(null)}
+          footer={
+            <>
+              <button onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
+                Bekor qilish
+              </button>
+              <button
+                onClick={() => { setGroups(g => g.filter(x => x.id !== deleteId)); setDeleteId(null); }}
+                className="px-5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-all active:scale-95"
+              >
+                O'chirish
+              </button>
+            </>
+          }
+        >
+          <p className="text-slate-600 text-sm">Haqiqatan ham bu guruhni o'chirmoqchimisiz?</p>
+        </Modal>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+html.dark {
+  filter: invert(1) hue-rotate(180deg);
+  background-color: #111827; /* Fallback for smooth background transition */
+}
+
+/* Re-invert media elements so images and avatars keep their true colors */
+html.dark img, 
+html.dark video,
+html.dark .no-invert {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Prevent double inversion on specific icons if needed, but usually images are enough */
