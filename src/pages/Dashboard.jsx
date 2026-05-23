@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Dashboard({ user }) {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
@@ -13,20 +13,73 @@ export default function Dashboard({ user }) {
     setStudentsAttendance(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const [counts, setCounts] = useState({ groups: 0, courses: 0, students: 1, gifts: 3, teachers: 0 });
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = { "accept": "*/*", "Authorization": `Bearer ${token}` };
+
+        const [groupsRes, coursesRes, studentsRes, teachersRes] = await Promise.all([
+          fetch("/api/v1/groups/all", { headers }).catch(() => ({ ok: false })),
+          fetch("/api/v1/courses", { headers }).catch(() => ({ ok: false })),
+          fetch("/api/v1/students", { headers }).catch(() => ({ ok: false })),
+          fetch("/api/v1/teachers", { headers }).catch(() => ({ ok: false }))
+        ]);
+
+        let groupsCount = 0, coursesCount = 0, studentsCount = 1, teachersCount = 0;
+
+        if (groupsRes.ok) {
+          const data = await groupsRes.json().catch(() => null);
+          groupsCount = data ? (Array.isArray(data) ? data.length : (data.data ? data.data.length : 0)) : 0;
+        }
+
+        if (coursesRes.ok) {
+          const data = await coursesRes.json().catch(() => null);
+          coursesCount = data ? (Array.isArray(data) ? data.length : (data.data ? data.data.length : 0)) : 0;
+        }
+
+        if (studentsRes.ok) {
+          const data = await studentsRes.json().catch(() => null);
+          if (data) {
+            studentsCount = data.total || data.totalCount || data.totalElements || (Array.isArray(data) ? data.length : (Array.isArray(data.data) ? data.data.length : (Array.isArray(data.students) ? data.students.length : 0)));
+          }
+        }
+
+        if (teachersRes.ok) {
+          const data = await teachersRes.json().catch(() => null);
+          teachersCount = data ? (Array.isArray(data) ? data.length : (data.data ? data.data.length : 0)) : 0;
+        }
+
+        setCounts({
+          groups: groupsCount,
+          courses: coursesCount,
+          students: studentsCount,
+          gifts: 3,
+          teachers: teachersCount
+        });
+      } catch (err) {
+        console.error("Dashboard stats xatolik:", err);
+      }
+    };
+    fetchCounts();
+  }, []);
+
   const stats = [
-    { label: "Sinflar", value: "0", icon: (
+    { label: "Guruhlar", value: counts.groups.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     )},
-    { label: "Fanlar", value: "0", icon: (
+    { label: "Kurslar", value: counts.courses.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     )},
-    { label: "Talabalar", value: "1", icon: (
+    { label: "Talabalar", value: counts.students.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
     )},
-    { label: "Sovg'alar", value: "3", icon: (
+    { label: "Sovg'alar", value: counts.gifts.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
     )},
-    { label: "O'qituvchilar", value: "0", icon: (
+    { label: "O'qituvchilar", value: counts.teachers.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M4 21v-2a4 4 0 0 1 3-3.87"/></svg>
     )},
   ];

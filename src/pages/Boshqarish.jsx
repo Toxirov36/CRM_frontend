@@ -90,15 +90,15 @@ function CourseDrawer({ course, onClose, onSave }) {
     >
       <div>
         <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
-        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all" placeholder="HR Manager..." value={name} onChange={e => setName(e.target.value)} />
+        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all" placeholder="Kurs nomi..." value={name} onChange={e => setName(e.target.value)} />
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <label className="text-sm font-bold text-slate-800">Kurs mavjud boledigon filiallar</label>
+      {/* <div> */}
+        {/* <div className="flex items-center justify-between mb-3">
+          <label className="text-sm font-bold text-slate-800">Kurs mavjud bo'ladigon filiallar</label>
           <button onClick={() => setFiliallar(["Filial 1", "Filial 2"])} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">Hammasini tanlash</button>
-        </div>
-        <div className="space-y-3">
+        </div> */}
+        {/* <div className="space-y-3">
           {["Filial 1", "Filial 2"].map(f => (
             <label key={f} className="flex items-center gap-3 cursor-pointer group">
               <div onClick={() => toggleFilial(f)} className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${filiallar.includes(f) ? "bg-indigo-600 border-indigo-600" : "border-gray-300 group-hover:border-indigo-400"}`}>
@@ -107,8 +107,8 @@ function CourseDrawer({ course, onClose, onSave }) {
               <span className="text-sm font-medium text-slate-700">{f}</span>
             </label>
           ))}
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       <div>
         <label className="block text-sm font-bold text-slate-800 mb-2">Dars davomiyligi (soatda)</label>
@@ -172,11 +172,10 @@ function CourseDrawer({ course, onClose, onSave }) {
 /* ───────── Room Drawer ───────── */
 function RoomDrawer({ room, onClose, onSave }) {
   const [name, setName] = useState(room?.name || "");
-  const [sigim, setSigim] = useState(room?.sigim ? String(room.sigim) : "");
 
   const handle = () => {
-    if (!name.trim() || !sigim) return;
-    onSave({ name: name.trim(), sigim: Number(sigim) });
+    if (!name.trim()) return;
+    onSave({ name: name.trim() });
   };
 
   return (
@@ -184,10 +183,6 @@ function RoomDrawer({ room, onClose, onSave }) {
       <div>
         <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
         <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Xona nomi" value={name} onChange={e => setName(e.target.value)} />
-      </div>
-      <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Sig'imi</label>
-        <input type="number" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Masalan: 20" value={sigim} onChange={e => setSigim(e.target.value)} />
       </div>
     </DrawerShell>
   );
@@ -254,10 +249,56 @@ function StaffDrawer({ staff, onClose, onSave }) {
 /* ───────── Kurslar Tab ───────── */
 function KurslarTab() {
   const [courses, setCourses] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+
+  // Arxiv (inactive) courses
+  const [arxivOpen, setArxivOpen] = useState(false);
+  const [arxivCourses, setArxivCourses] = useState([]);
+  const [arxivLoading, setArxivLoading] = useState(false);
+
+  const fetchArxiv = async () => {
+    setArxivLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/courses/inactive", {
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setArxivCourses(Array.isArray(data) ? data : data.data || []);
+    } catch {
+      setArxivCourses([]);
+    } finally {
+      setArxivLoading(false);
+    }
+  };
+
+  const openArxiv = () => {
+    setArxivOpen(true);
+    fetchArxiv();
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/courses/activate?id=${id}`, {
+        method: "PUT",
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Aktivlashtirishda xatolik");
+        return;
+      }
+      setArxivCourses(prev => prev.filter(c => c.id !== id));
+      fetchCourses();
+    } catch {
+      alert("Server bilan bog'lanishda xatolik");
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -309,7 +350,7 @@ function KurslarTab() {
         await fetchCourses(); // backend {success, message} qaytargani uchun qayta fetch
 
       } else {
-        const res = await fetch(`/api/v1/courses/${drawer.id}`, {
+        const res = await fetch(`/api/v1/courses/update?id=${drawer.id}`, {
           method: "PUT",
           headers: {
             "accept": "*/*",
@@ -350,12 +391,17 @@ function KurslarTab() {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-bold text-slate-800 text-base">Kurslar ro'yxati</h2>
-        <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
-          + Kurs qo'shish
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-slate-700 text-sm font-semibold rounded-xl transition-all">
+            Arxiv <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+          </button>
+          <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
+            + Kurs qo'shish
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {courses.map(c => (
+        {courses.slice((currentPage - 1) * 8, currentPage * 8).map(c => (
           <div key={c.id} className="p-4 rounded-2xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/10 transition-all group relative">
             <div className="mb-3 w-10 h-10 rounded-xl flex items-center justify-center" style={{ color: c.color || '#4F46E5', backgroundColor: (c.color || '#4F46E5') + '15' }}>
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
@@ -379,6 +425,42 @@ function KurslarTab() {
         ))}
       </div>
 
+      {Math.ceil(courses.length / 8) > 1 && (
+        <div className="flex items-center justify-between w-full mt-6 px-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            Previous
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.ceil(courses.length / 8) }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setCurrentPage(p)}
+                className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${
+                  currentPage === p 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(courses.length / 8), p + 1))}
+            disabled={currentPage === Math.ceil(courses.length / 8)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      )}
+
       {drawer && <CourseDrawer course={drawer === "add" ? null : drawer} onClose={() => setDrawer(null)} onSave={handleSave} />}
 
       {deleteId && (
@@ -387,7 +469,7 @@ function KurslarTab() {
           onConfirm={async () => {
             try {
               const token = localStorage.getItem("token");
-              await fetch(`/api/v1/courses/${deleteId}`, {
+              await fetch(`/api/v1/courses/delete?id=${deleteId}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` },
               });
@@ -399,6 +481,71 @@ function KurslarTab() {
           }}
         />
       )}
+
+      {/* Arxiv Modal */}
+      {arxivOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => setArxivOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] max-w-[95vw] max-h-[80vh] bg-white rounded-3xl shadow-2xl z-[70] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv kurslar</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) kurslar ro'yxati</p>
+                </div>
+              </div>
+              <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-8 py-4">
+              {arxivLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+              ) : arxivCourses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                  <p className="text-sm">Arxiv bo'sh</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {arxivCourses.map(c => (
+                    <div key={c.id} className="p-4 rounded-2xl border border-gray-100 bg-slate-50/40 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-2">
+                          <svg width="17" height="17" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">Davomiyligi: {c.duration_month || "—"} oy</p>
+                        <p className="text-xs font-bold text-indigo-600 mt-1">{Number(c.price || 0).toLocaleString()} so'm</p>
+                      </div>
+                      <button
+                        onClick={() => handleActivate(c.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-bold transition-all active:scale-95 shrink-0"
+                      >
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                        Aktivlashtirish
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
+                Yopish
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -407,11 +554,57 @@ function KurslarTab() {
 /* ───────── Xonalar Tab ───────── */
 function XonalarTab() {
   const [rooms, setRooms] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [forceRefresh, setForceRefresh] = useState(0);
+
+  // Arxiv (inactive) rooms
+  const [arxivOpen, setArxivOpen] = useState(false);
+  const [arxivRooms, setArxivRooms] = useState([]);
+  const [arxivLoading, setArxivLoading] = useState(false);
+
+  const fetchArxiv = async () => {
+    setArxivLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/rooms/InactiveRooms", {
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setArxivRooms(Array.isArray(data) ? data : data.data || []);
+    } catch {
+      setArxivRooms([]);
+    } finally {
+      setArxivLoading(false);
+    }
+  };
+
+  const openArxiv = () => {
+    setArxivOpen(true);
+    fetchArxiv();
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/rooms/${id}`, {
+        method: "PUT",
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Aktivlashtirishda xatolik");
+        return;
+      }
+      setArxivRooms(prev => prev.filter(r => r.id !== id));
+      setForceRefresh(r => r + 1);
+    } catch {
+      alert("Server bilan bog'lanishda xatolik");
+    }
+  };
 
   // ✅ Backend dan xonalarni olish
   useEffect(() => {
@@ -440,7 +633,7 @@ function XonalarTab() {
     fetchRooms(); // ← faqat shu qolsin
   }, [forceRefresh]);
 
-  const handleSave = async ({ name, sigim }) => {
+  const handleSave = async ({ name }) => {
     try {
       const token = localStorage.getItem("token");
 
@@ -453,7 +646,7 @@ function XonalarTab() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
           },
-          body: JSON.stringify({ name, capacity: sigim }), // backend "capacity" kutishi mumkin
+          body: JSON.stringify({ name }),
         });
 
         const data = await res.json();
@@ -465,15 +658,15 @@ function XonalarTab() {
         }
 
       } else {
-        // ✅ PUT
-        const res = await fetch(`/api/v1/rooms/${drawer.id}`, {
-          method: "PUT",
+        // ✅ PATCH
+        const res = await fetch(`/api/v1/rooms/update/${drawer.id}`, {
+          method: "PATCH",
           headers: {
             "accept": "*/*",
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
           },
-          body: JSON.stringify({ name, capacity: sigim }),
+          body: JSON.stringify({ name }),
         });
 
         const data = await res.json();
@@ -497,13 +690,18 @@ function XonalarTab() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-bold text-slate-800 text-base">Xonalar</h2>
-        <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
-          + Xonani qo'shish
-        </button>
+        <h2 className="font-bold text-slate-800 text-base">Xonalar ro'yxati</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-slate-700 text-sm font-semibold rounded-xl transition-all">
+            Arxiv <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+          </button>
+          <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
+            + Xonani qo'shish
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {rooms.map(room => (
+        {rooms.slice((currentPage - 1) * 12, currentPage * 12).map(room => (
           <div key={room.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/20 transition-all group">
             <div>
               <p className="text-sm font-semibold text-slate-800">{room.name}</p>
@@ -520,8 +718,130 @@ function XonalarTab() {
           </div>
         ))}
       </div>
+      
+      {Math.ceil(rooms.length / 12) > 1 && (
+        <div className="flex items-center justify-between w-full mt-6 px-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            Previous
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.ceil(rooms.length / 12) }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setCurrentPage(p)}
+                className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${
+                  currentPage === p 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(rooms.length / 12), p + 1))}
+            disabled={currentPage === Math.ceil(rooms.length / 12)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      )}
+
       {drawer && <RoomDrawer room={drawer === "add" ? null : drawer} onClose={() => setDrawer(null)} onSave={handleSave} />}
-      {deleteId && <DeleteConfirm onClose={() => setDeleteId(null)} onConfirm={() => { setRooms(r => r.filter(x => x.id !== deleteId)); setDeleteId(null); }} />}
+      {deleteId && (
+        <DeleteConfirm 
+          onClose={() => setDeleteId(null)} 
+          onConfirm={async () => {
+            try {
+              const token = localStorage.getItem("token");
+              const res = await fetch(`/api/v1/rooms/${deleteId}`, {
+                method: "DELETE",
+                headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+              });
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.message || "O'chirishda xatolik");
+                return;
+              }
+              setRooms(r => r.filter(x => x.id !== deleteId));
+              setDeleteId(null);
+            } catch {
+              alert("O'chirishda xatolik");
+            }
+          }} 
+        />
+      )}
+
+      {/* Arxiv Modal */}
+      {arxivOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => setArxivOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] max-w-[95vw] max-h-[80vh] bg-white rounded-3xl shadow-2xl z-[70] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv xonalar</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) xonalar ro'yxati</p>
+                </div>
+              </div>
+              <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-8 py-4">
+              {arxivLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+              ) : arxivRooms.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                  <p className="text-sm">Arxiv bo'sh</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {arxivRooms.map(r => (
+                    <div key={r.id} className="p-4 rounded-2xl border border-gray-100 bg-slate-50/40 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-2">
+                          <svg width="17" height="17" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm">{r.name}</h3>
+                      </div>
+                      <button
+                        onClick={() => handleActivate(r.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-bold transition-all active:scale-95 shrink-0"
+                      >
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                        Aktivlashtirish
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
+                Yopish
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -79,16 +79,16 @@ export default function Sidebar({ activePage, setActivePage, setActiveTab }) {
             <>
               <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
               <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl border border-gray-100 shadow-2xl z-40 overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-gray-100">
+                {/* <div className="px-4 py-2.5 border-b border-gray-100">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu</p>
-                </div>
+                </div> */}
                 <div className="py-1">
                   {MENU_ITEMS.map(m => (
                     <button
                       key={m.label}
                       onClick={() => {
                         setActivePage("boshqarish");
-                        setActiveTab(m.label); // ✅ "Kurslar", "Xonalar", ...
+                        setActiveTab(m.label);
                         setShowMenu(false);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left group"
@@ -127,6 +127,38 @@ export default function Sidebar({ activePage, setActivePage, setActiveTab }) {
           </button>
         ))}
       </nav>
+
+      {/* Obuna */}
+      <div className="p-3 shrink-0 mt-auto">
+        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 shrink-0 flex items-center justify-center bg-amber-100 rounded-xl shadow-sm border border-amber-200/50">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                <svg width="10" height="10" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-[13px] font-bold text-slate-800 leading-none mb-1.5">Obuna</h4>
+              <p className="text-[11px] text-red-500 font-semibold leading-none">Obunangiz tugagan</p>
+            </div>
+          </div>
+          <button className="w-full bg-[#ff3b30] hover:bg-red-600 text-white rounded-[10px] py-2.5 flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-all shadow-md shadow-red-200/50">
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            Obunani yangilash
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

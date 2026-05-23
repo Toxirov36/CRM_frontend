@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Teachers from "./pages/Teachers";
@@ -12,26 +12,27 @@ import Topbar from "./components/Topbar";
 export default function App() {
   const [user, setUser] = useState(null);
   const [activePage, setActivePage] = useState("asosiy");
-  const [activeTab, setActiveTab]   = useState("Kurslar");
+  const [activeTab, setActiveTab] = useState("Kurslar");
+
+  const currentPage = useMemo(() => {
+    if (!user) return null;
+    switch (activePage) {
+      case "asosiy": return <Dashboard user={user} />;
+      case "oqituvchi": return <Teachers />;
+      case "guruhlar": return <Guruhlar />;
+      case "talabalar": return <Students />;
+      case "kurslar": return <Courses />;
+      case "sovgalar": return <ComingSoon title="Sovg'alar" icon="🎁" />;
+      case "moliya": return <ComingSoon title="Moliya" icon="💰" />;
+      case "boshqarish": return <Boshqarish activeTab={activeTab} setActiveTab={setActiveTab} />;
+      default: return <Dashboard user={user} />;
+    }
+  }, [activePage, user, activeTab]);
+
 
   if (!user) {
     return <Login onLogin={(userData) => setUser(userData)} />;
   }
-
-  const renderPage = () => {
-    switch (activePage) {
-      case "asosiy":     return <Dashboard user={user} />;
-      case "oqituvchi":  return <Teachers />;
-      case "guruhlar":   return <Guruhlar />;
-      case "talabalar":  return <Students />;
-      case "kurslar":    return <Courses />;
-      case "sovgalar":   return <ComingSoon title="Sovg'alar" icon="🎁" />;
-      case "moliya":     return <ComingSoon title="Moliya" icon="💰" />;
-case "boshqarish": return <Boshqarish activeTab={activeTab} setActiveTab={setActiveTab} />;
-      default:           return <Dashboard user={user} />;
-    }
-  };
-
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
@@ -39,7 +40,7 @@ case "boshqarish": return <Boshqarish activeTab={activeTab} setActiveTab={setAct
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar user={user} activePage={activePage} onLogout={() => setUser(null)} />
         <main className="flex-1 overflow-y-auto p-6">
-          {renderPage()}
+          {currentPage}
         </main>
       </div>
     </div>

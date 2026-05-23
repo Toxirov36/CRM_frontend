@@ -23,7 +23,7 @@ function ExpandedContent({ g, onClose }) {
   const [topicName, setTopicName] = useState("CRM groupinner full");
   const [studentsAttendance, setStudentsAttendance] = useState({ 1: true, 2: false });
   
-  const [subTab, setSubTab] = useState("Darslar");
+  const [subTab, setSubTab] = useState("Uyga vazifa");
   const [isAddingHomework, setIsAddingHomework] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState(null);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -46,6 +46,18 @@ function ExpandedContent({ g, onClose }) {
     { id: 45, title: "Applying Access and Refresh Token, Bcrypt, Validator, Middleware, Router, and Other Concepts in a Real Project.", users: 18, pending: 0, completed: 9, assigned: "12 Yan, 2026 13:06", deadline: "13 Yan, 2026 05:06", date: "12 Yan, 2026" },
   ];
 
+  const groupVideos = [
+    { id: 1, name: "108.2.mov", dars_nomi: "crm homework cheking frontend", status: "Tayyor", sana: "15 May, 2026", hajmi: "436.08 MB", vaqt: "18 May, 2026" },
+    { id: 2, name: "108.1.mov", dars_nomi: "crm homework cheking frontend", status: "Tayyor", sana: "15 May, 2026", hajmi: "1.9 GB", vaqt: "18 May, 2026" },
+    { id: 3, name: "107.1.mov", dars_nomi: "crm backend homework checking", status: "Tayyor", sana: "14 May, 2026", hajmi: "1.77 GB", vaqt: "14 May, 2026" },
+    { id: 4, name: "107.2.mov", dars_nomi: "crm backend homework checking", status: "Tayyor", sana: "14 May, 2026", hajmi: "975.08 MB", vaqt: "14 May, 2026" },
+    { id: 5, name: "106.1.mov", dars_nomi: "crm homework, full backend, frontend qilish", status: "Tayyor", sana: "13 May, 2026", hajmi: "1.53 GB", vaqt: "13 May, 2026" },
+    { id: 6, name: "106.2.mov", dars_nomi: "crm homework, full backend, frontend qilish", status: "Tayyor", sana: "13 May, 2026", hajmi: "1014.64 MB", vaqt: "13 May, 2026" },
+    { id: 7, name: "105.2.mov", dars_nomi: "NajotEdu crm backend schedule and attendance", status: "Tayyor", sana: "12 May, 2026", hajmi: "36.73 MB", vaqt: "12 May, 2026" },
+    { id: 8, name: "105.3.mov", dars_nomi: "NajotEdu crm backend schedule and attendance", status: "Tayyor", sana: "12 May, 2026", hajmi: "1.02 GB", vaqt: "12 May, 2026" },
+    { id: 9, name: "105.1.mov", dars_nomi: "NajotEdu crm backend schedule and attendance", status: "Tayyor", sana: "12 May, 2026", hajmi: "1.4 GB", vaqt: "12 May, 2026" },
+  ];
+
   const toggleAttendance = (id) => {
     setStudentsAttendance(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -59,28 +71,59 @@ function ExpandedContent({ g, onClose }) {
     { id: 2, name: "+++Yusupova Barchinoy", days: "Du/Se/Ch/Pa/Ju", time: "08:00 dan - 09:30 gacha", dateRange: "15 Yan, 2026 - 27 Iyun, 2026", group: "F2 Autodesk // 18" },
   ];
 
-  const calendarDays = [
-    { id: 1, month: "Apr", day: "28", active: true },
-    { id: 2, month: "Apr", day: "29", active: true },
-    { id: 3, month: "Apr", day: "30", active: true },
-    { id: 4, month: "May", day: "01", active: true },
-    { id: 5, month: "May", day: "04", active: true },
-    { id: 6, month: "May", day: "05", active: true },
-    { id: 7, month: "May", day: "06", active: true },
-    { id: 8, month: "May", day: "07", active: true },
-    { id: 9, month: "May", day: "08", active: true },
-    { id: 10, month: "May", day: "11", active: true },
-    { id: 11, month: "May", day: "12", active: false },
-    { id: 12, month: "May", day: "13", active: false },
-    { id: 13, month: "May", day: "14", active: false },
-    { id: 14, month: "May", day: "15", active: false },
-    { id: 15, month: "May", day: "18", active: false },
-    { id: 16, month: "May", day: "19", active: false },
-    { id: 17, month: "May", day: "20", active: false },
-    { id: 18, month: "May", day: "21", active: false },
-    { id: 19, month: "May", day: "22", active: false },
-    { id: 20, month: "May", day: "25", active: false },
-  ];
+  const [courseMonth, setCourseMonth] = useState("1");
+  const [schedulesData, setSchedulesData] = useState({});
+  const [calendarDays, setCalendarDays] = useState([]);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`/api/v1/groups/${g.id}/schedules`, {
+          headers: {
+            "accept": "*/*",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setSchedulesData(json.data);
+          const months = Object.keys(json.data).sort((a,b)=>Number(a)-Number(b));
+          if (months.length > 0) {
+            const initialMonth = months.includes("1") ? "1" : months[0];
+            setCourseMonth(initialMonth);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching schedules:", error);
+      }
+    };
+    if (g && g.id) {
+      fetchSchedules();
+    }
+  }, [g]);
+
+  useEffect(() => {
+    if (schedulesData[courseMonth]) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const formattedDays = schedulesData[courseMonth].map((d, i) => {
+        const dayDate = new Date(`${d.month} ${d.day}, ${today.getFullYear()}`);
+        const isPast = dayDate < today;
+
+        return {
+          id: i + 1,
+          month: d.month,
+          day: d.day,
+          active: isPast // o'tgan kunlar kulrang, bugun va kelajak oq rangda
+        };
+      });
+      setCalendarDays(formattedDays);
+    } else {
+      setCalendarDays([]);
+    }
+  }, [courseMonth, schedulesData]);
 
   return (
     <div className="p-6 md:p-8 animate-in slide-in-from-top-2 duration-300 ease-out">
@@ -117,91 +160,211 @@ function ExpandedContent({ g, onClose }) {
 
       {/* Tab Content */}
       {activeTab === "Ma'lumotlar" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Col */}
-          <div className="space-y-4">
-            {/* Guruh mentorlari */}
+        <div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Col - Mentors */}
             <div className="border border-[#2D78D2]/20 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
-              <div 
+              <button
                 onClick={() => togglePanel("mentors")}
-                className="bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white cursor-pointer select-none"
+                className="w-full bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white select-none hover:bg-[#2567c5] transition-colors"
               >
                 <h4 className="font-bold text-sm">Guruh mentorlari</h4>
-                <button className={`text-white/70 hover:text-white transition-transform duration-300 ${panels.mentors ? "rotate-180" : ""}`}>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-              </div>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${panels.mentors ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6"/></svg>
+              </button>
               <div className={`overflow-hidden transition-all duration-300 ${panels.mentors ? "max-h-[500px]" : "max-h-0"}`}>
-                <div className="p-6 flex flex-wrap gap-8 justify-center sm:justify-start">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-50 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl border-4 border-white shadow-sm">👾</div>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Teacher</p>
-                    <p className="text-xs font-bold text-slate-800 leading-tight mt-1.5">{g.teachers?.first_name || "Abduxoshim"}<br/>{g.teachers?.last_name || "Sultonqulov"}</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-50 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl border-4 border-white shadow-sm">👾</div>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Assistant</p>
-                    <p className="text-xs font-bold text-slate-800 leading-tight mt-1.5">Umarxon<br/>+++Xodjaev</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-50 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl border-4 border-white shadow-sm">👾</div>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Assistant</p>
-                    <p className="text-xs font-bold text-slate-800 leading-tight mt-1.5">Barchinoy<br/>+++Yusupova</p>
-                  </div>
+                <div className="p-6 space-y-4">
+                  {g.teachers && (
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-slate-200 flex items-center justify-center text-white font-bold text-lg overflow-hidden border-2 border-slate-300">
+                        <img src={g.teachers?.photo || `https://ui-avatars.com/api/?name=${g.teachers?.first_name || ""} ${g.teachers?.last_name || ""}&background=random`} alt="teacher" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-wide">Teacher</p>
+                        <p className="text-sm font-bold text-slate-800">{g.teachers?.first_name} {g.teachers?.last_name}</p>
+                        <p className="text-[11px] text-slate-400">{g.teachers?.email || "—"}</p>
+                      </div>
+                    </div>
+                  )}
+                  {!g.teachers && (
+                    <p className="text-sm text-slate-500 text-center py-4">O'qituvchi topilmadi</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Akademiklar */}
-            <div className="border border-gray-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
-              <div 
-                onClick={() => togglePanel("academics")}
-                className="bg-slate-50/80 px-5 py-4 flex items-center justify-between text-slate-700 cursor-pointer select-none hover:bg-slate-100 transition-colors"
+            {/* Right Col - Parameters */}
+            <div className="border border-[#2D78D2]/20 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+              <button
+                onClick={() => togglePanel("params")}
+                className="w-full bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white select-none hover:bg-[#2567c5] transition-colors"
               >
-                <h4 className="font-bold text-sm">Akademiklar va ularning o'qitgan soatlari</h4>
-                <button className={`text-slate-400 transition-transform duration-300 ${panels.academics ? "rotate-180" : ""}`}>
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-              </div>
-              <div className={`overflow-hidden transition-all duration-300 ${panels.academics ? "max-h-[500px] border-t border-gray-100" : "max-h-0"}`}>
-                <div className="p-6 text-sm text-slate-500 text-center">
-                  Hozircha ma'lumot yo'q.
+                <h4 className="font-bold text-sm">Parametrlar</h4>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${panels.params ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div className={`overflow-hidden transition-all duration-300 ${panels.params ? "max-h-[1000px]" : "max-h-0"}`}>
+                <div className="p-5">
+                  <table className="w-full text-[13px]">
+                    <tbody className="divide-y divide-gray-100/60">
+                      <tr><td className="py-2.5 text-slate-500 font-medium">Kurs:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.name || "—"}</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium">O'rta yosh:</td><td className="py-2.5 text-right font-bold text-slate-800">—</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium">O'quvchilar sig'imi:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.max_student || "—"}</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium">Mavjud o'quvchilar:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.students || 0}</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium">O'quv oyidagi darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800">{schedulesData[courseMonth]?.length || "—"}</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium">Kurs davomiyligi (oy):</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.duration_month || "—"} oy</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium border-b-0">Jami darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800 border-b-0">{Object.values(schedulesData).reduce((sum, arr) => sum + arr.length, 0) || "—"}</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Col */}
-          <div className="border border-[#2D78D2]/20 rounded-2xl overflow-hidden bg-white shadow-sm h-fit transition-all">
-            <div 
-              onClick={() => togglePanel("params")}
-              className="bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white cursor-pointer select-none"
-            >
-              <h4 className="font-bold text-sm">Parametrlar</h4>
-              <button className={`text-white/70 hover:text-white transition-transform duration-300 ${panels.params ? "rotate-180" : ""}`}>
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-              </button>
-            </div>
-            <div className={`overflow-hidden transition-all duration-300 ${panels.params ? "max-h-[1000px]" : "max-h-0"}`}>
-              <div className="p-5">
-                <table className="w-full text-[13px]">
-                  <tbody className="divide-y divide-gray-100/60">
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Filial:</td><td className="py-2.5 text-right font-bold text-[#00B2FF]">Chilonzor</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Kurs:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.name || "Bootcamp Full Stack NodeJS+VueJS"}</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Turi:</td><td className="py-2.5 text-right font-bold text-slate-800">BOOTCAMP</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Kategoriya:</td><td className="py-2.5 text-right font-bold text-slate-800">Programming</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">To'lov turi:</td><td className="py-2.5 text-right font-bold text-slate-800">T|Bootcamp Fullstack|oyma-oy|03/07/2025</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">O'rta yosh:</td><td className="py-2.5 text-right font-bold text-slate-800">25</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">O'quvchilar sig'imi:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.max_student || 19}</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Mavjud o'quvchilar:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.students || 24}</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Shartnomalar:</td><td className="py-2.5 text-right font-bold text-slate-800">18</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">O'quv oyidagi darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800">20</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium">Kurs davomiyligi (oy):</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.duration_month || 8.0}</td></tr>
-                    <tr><td className="py-2.5 text-slate-500 font-medium border-b-0">Jami darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800 border-b-0">160</td></tr>
-                  </tbody>
-                </table>
+          {/* Calendar + Dars jadvali section */}
+          <div className="mt-8 animate-in fade-in duration-300">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-5">
+                <button 
+                  onClick={() => {
+                    const months = Object.keys(schedulesData).sort((a,b)=>Number(a)-Number(b));
+                    const currentIndex = months.indexOf(courseMonth);
+                    if (currentIndex > 0) setCourseMonth(months[currentIndex - 1]);
+                  }}
+                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95"
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <span className="text-[13px] font-extrabold text-slate-700">{courseMonth}-o'quv oyi</span>
+                <button 
+                  onClick={() => {
+                    const months = Object.keys(schedulesData).sort((a,b)=>Number(a)-Number(b));
+                    const currentIndex = months.indexOf(courseMonth);
+                    if (currentIndex < months.length - 1 && currentIndex !== -1) setCourseMonth(months[currentIndex + 1]);
+                  }}
+                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95"
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar">
+                {calendarDays.map(day => (
+                  <div
+                    key={day.id}
+                    onClick={() => setSelectedDayId(selectedDayId === day.id ? null : day.id)}
+                    className={`shrink-0 w-[52px] h-[60px] rounded-[14px] flex flex-col items-center justify-center transition-colors cursor-pointer select-none
+                      ${selectedDayId === day.id
+                        ? "bg-emerald-500 text-white shadow-md shadow-emerald-200"
+                        : day.active
+                          ? "bg-[#E6E8EA] text-slate-700 hover:bg-gray-300/60"
+                          : "bg-white border border-gray-100 text-slate-500 hover:border-gray-200"}
+                    `}
+                  >
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedDayId === day.id ? "text-emerald-50" : ""}`}>{day.month}</span>
+                    <span className="text-[15px] font-extrabold mt-0.5">{day.day}</span>
+                  </div>
+                ))}
               </div>
             </div>
+
+            {!selectedDayId ? (
+              <div className="animate-in fade-in duration-300">
+                <h2 className="text-[15px] font-extrabold text-slate-800 mb-5">Dars jadvali</h2>
+                <div className="space-y-3">
+                  {schedules.map(item => (
+                    <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-50/70 rounded-xl border border-gray-100/60 hover:bg-slate-50 transition-colors gap-4">
+                      <div className="text-[13px] font-bold text-[#00B2FF] flex-1">{item.name}</div>
+                      <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center">{item.days}</div>
+                      <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center whitespace-nowrap">{item.time}</div>
+                      <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center whitespace-nowrap">{item.dateRange}</div>
+                      <div className="text-[13px] font-bold text-slate-700 flex-1 md:text-right">{item.group}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 flex justify-center">
+                  <button className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-400 hover:bg-gray-50 transition-colors">
+                    Yana ko'rsatish (9)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 border-t border-gray-100 pt-6">
+                <div className="flex gap-6 border-b border-gray-100 mb-6">
+                  {["Assistant", "Teacher"].map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setAttendanceTab(tab)}
+                      className={`pb-3 text-sm font-bold relative transition-colors ${attendanceTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
+                    >
+                      {tab}
+                      {attendanceTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 rounded-t-full" />}
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-slate-50 rounded-2xl p-6 mb-8 w-fit min-w-[400px]">
+                  <h4 className="font-extrabold text-sm text-slate-800 mb-4">Ma'lumot</h4>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white">
+                      <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Sultonqulov Abduxoshim</p>
+                      <p className="text-xs font-semibold text-slate-500 mt-0.5">Teacher</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-8 bg-white p-4 rounded-xl border border-gray-100 shadow-sm overflow-x-auto custom-scrollbar">
+                    <div className="shrink-0">
+                      <p className="text-[10px] text-slate-400 font-bold mb-1">Dars kuni</p>
+                      <p className="text-xs font-bold text-slate-700">{calendarDays.find(d => d.id === selectedDayId)?.day} {calendarDays.find(d => d.id === selectedDayId)?.month}, 2026</p>
+                    </div>
+                    <div className="shrink-0">
+                      <p className="text-[10px] text-slate-400 font-bold mb-1">Dars vaqti</p>
+                      <p className="text-xs font-bold text-slate-700">09:30 - 12:30</p>
+                    </div>
+                    <div className="shrink-0">
+                      <p className="text-[10px] text-slate-400 font-bold mb-1">Filial</p>
+                      <p className="text-xs font-bold text-slate-700">Chilonzor</p>
+                    </div>
+                    <div className="shrink-0">
+                      <p className="text-[10px] text-slate-400 font-bold mb-1">Xona</p>
+                      <p className="text-xs font-bold text-slate-700">{g.rooms?.name || "F2 Autodesk // 18"}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                    <thead>
+                      <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-gray-100">
+                        <th className="py-3 px-4 w-12">#</th>
+                        <th className="py-3 px-4">O'quvchi ismi</th>
+                        <th className="py-3 px-4 w-32">Vaqti</th>
+                        <th className="py-3 px-4 w-24">Keldi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      <tr className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-4 text-xs font-bold text-slate-700">1</td>
+                        <td className="py-4 px-4 text-xs font-bold text-slate-700">Abdugapparova Nozima</td>
+                        <td className="py-4 px-4 text-xs font-bold text-slate-700">09:30</td>
+                        <td className="py-4 px-4">
+                          <div onClick={() => toggleAttendance(1)} className={`w-10 h-5 rounded-full p-0.5 cursor-pointer flex transition-colors ${studentsAttendance[1] ? "bg-emerald-400 justify-end" : "bg-gray-200 justify-start"}`}>
+                            <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                          </div>
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-4 text-xs font-bold text-slate-700">2</td>
+                        <td className="py-4 px-4 text-xs font-bold text-slate-700">Abduqulov Mirsaid</td>
+                        <td className="py-4 px-4 text-xs font-bold text-slate-700">09:30</td>
+                        <td className="py-4 px-4">
+                          <div onClick={() => toggleAttendance(2)} className={`w-10 h-5 rounded-full p-0.5 cursor-pointer flex transition-colors ${studentsAttendance[2] ? "bg-emerald-400 justify-end" : "bg-gray-200 justify-start"}`}>
+                            <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -212,10 +375,7 @@ function ExpandedContent({ g, onClose }) {
           {/* Sub-tabs Header */}
           <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
             <div className="flex items-center gap-6">
-              <h2 
-                className={`text-[15px] font-extrabold cursor-pointer transition-colors ${subTab === "Darslar" ? "text-slate-800" : "text-slate-400 hover:text-slate-600"}`}
-                onClick={() => setSubTab("Darslar")}
-              >
+              <h2 className="text-[15px] font-extrabold text-slate-800">
                 Guruh darsliklari
               </h2>
               
@@ -247,184 +407,16 @@ function ExpandedContent({ g, onClose }) {
                 Uyga vazifa qo'shish
               </button>
             )}
+
+            {subTab === "Videolar" && (
+              <button 
+                className="px-5 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]"
+              >
+                Qo'shish
+              </button>
+            )}
           </div>
 
-          {/* Darslar Tab (Calendar + Attendance) */}
-          {subTab === "Darslar" && (
-            <div className="animate-in fade-in duration-300">
-              <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
-                  </button>
-                  <span className="text-[13px] font-extrabold text-slate-700">7-o'quv oyi</span>
-                  <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar">
-                  {calendarDays.map(day => (
-                    <div 
-                      key={day.id} 
-                      onClick={() => setSelectedDayId(day.id)}
-                      className={`shrink-0 w-[52px] h-[60px] rounded-[14px] flex flex-col items-center justify-center transition-colors cursor-pointer select-none
-                        ${selectedDayId === day.id 
-                          ? "bg-emerald-500 text-white shadow-md shadow-emerald-200" 
-                          : day.active 
-                            ? "bg-[#E6E8EA] text-slate-700 hover:bg-gray-300/60" 
-                            : "bg-white border border-gray-100 text-slate-500 hover:border-gray-200"}
-                      `}
-                    >
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedDayId === day.id ? "text-emerald-50" : ""}`}>{day.month}</span>
-                      <span className="text-[15px] font-extrabold mt-0.5">{day.day}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {!selectedDayId ? (
-                <div className="animate-in fade-in duration-300">
-                   <h2 className="text-[15px] font-extrabold text-slate-800 mb-5">Dars jadvali</h2>
-                   <div className="space-y-3">
-                     {schedules.map(item => (
-                       <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-50/70 rounded-xl border border-gray-100/60 hover:bg-slate-50 transition-colors gap-4">
-                         <div className="text-[13px] font-bold text-[#00B2FF] flex-1">{item.name}</div>
-                         <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center">{item.days}</div>
-                         <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center whitespace-nowrap">{item.time}</div>
-                         <div className="text-[13px] font-semibold text-slate-700 flex-1 md:text-center whitespace-nowrap">{item.dateRange}</div>
-                         <div className="text-[13px] font-bold text-slate-700 flex-1 md:text-right">{item.group}</div>
-                       </div>
-                     ))}
-                   </div>
-                   <div className="mt-5 flex justify-center">
-                     <button className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-400 hover:bg-gray-50 transition-colors">
-                       Yana ko'rsatish (9)
-                     </button>
-                   </div>
-                </div>
-              ) : (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 border-t border-gray-100 pt-6">
-                    {/* Tabs: Assistant / Teacher */}
-                    <div className="flex gap-6 border-b border-gray-100 mb-6">
-                       {["Assistant", "Teacher"].map(tab => (
-                         <button 
-                           key={tab}
-                           onClick={() => setAttendanceTab(tab)}
-                           className={`pb-3 text-sm font-bold relative transition-colors ${attendanceTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
-                         >
-                           {tab}
-                           {attendanceTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 rounded-t-full" />}
-                         </button>
-                       ))}
-                    </div>
-
-                    {/* Ma'lumot Card */}
-                    <div className="bg-slate-50 rounded-2xl p-6 mb-8 w-fit min-w-[400px]">
-                      <h4 className="font-extrabold text-sm text-slate-800 mb-4">Ma'lumot</h4>
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white">
-                          <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">Sultonqulov Abduxoshim</p>
-                          <p className="text-xs font-semibold text-slate-500 mt-0.5">Teacher</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-8 bg-white p-4 rounded-xl border border-gray-100 shadow-sm overflow-x-auto custom-scrollbar">
-                        <div className="shrink-0">
-                          <p className="text-[10px] text-slate-400 font-bold mb-1">Dars kuni</p>
-                          <p className="text-xs font-bold text-slate-700">11 May, 2026</p>
-                        </div>
-                        <div className="shrink-0">
-                          <p className="text-[10px] text-slate-400 font-bold mb-1">Dars vaqti</p>
-                          <p className="text-xs font-bold text-slate-700">09:30 - 12:30</p>
-                        </div>
-                        <div className="shrink-0">
-                          <p className="text-[10px] text-slate-400 font-bold mb-1">Filial</p>
-                          <p className="text-xs font-bold text-slate-700">Chilonzor</p>
-                        </div>
-                        <div className="shrink-0">
-                          <p className="text-[10px] text-slate-400 font-bold mb-1">Xona</p>
-                          <p className="text-xs font-bold text-slate-700">F2 Autodesk // 18</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Group Title */}
-                    <h3 className="text-[15px] font-extrabold text-slate-800 mb-6">Bootcamp Full Stack N26 11.05.2026</h3>
-
-                    {/* Yo'qlama va mavzu kiritish */}
-                    <div className="mb-6">
-                      <h4 className="font-extrabold text-[15px] text-slate-800 mb-5">Yo'qlama va mavzu kiritish</h4>
-                      
-                      <div className="flex items-center gap-6 mb-6">
-                        <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold transition-colors ${topicType === "O'quv reja" ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}>
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${topicType === "O'quv reja" ? "border-emerald-500" : "border-gray-300"}`}>
-                            {topicType === "O'quv reja" && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
-                          </div>
-                          <input type="radio" className="hidden" checked={topicType === "O'quv reja"} onChange={() => setTopicType("O'quv reja")} />
-                          O'quv reja bo'yicha
-                        </label>
-                        <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold transition-colors ${topicType === "Boshqa" ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}>
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${topicType === "Boshqa" ? "border-emerald-500" : "border-gray-300"}`}>
-                            {topicType === "Boshqa" && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
-                          </div>
-                          <input type="radio" className="hidden" checked={topicType === "Boshqa"} onChange={() => setTopicType("Boshqa")} />
-                          Boshqa
-                        </label>
-                      </div>
-
-                      <div className="mb-8 w-full max-w-md">
-                        <label className="block text-xs font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-700 focus:border-emerald-400 transition-colors font-semibold"
-                          value={topicName}
-                          onChange={e => setTopicName(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Students Table */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[500px]">
-                        <thead>
-                          <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-gray-100">
-                            <th className="py-3 px-4 w-12">#</th>
-                            <th className="py-3 px-4">O'quvchi ismi</th>
-                            <th className="py-3 px-4 w-32">Vaqti</th>
-                            <th className="py-3 px-4 w-24">Keldi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          <tr className="hover:bg-slate-50 transition-colors">
-                            <td className="py-4 px-4 text-xs font-bold text-slate-700">1</td>
-                            <td className="py-4 px-4 text-xs font-bold text-slate-700">Abdugapparova Nozima</td>
-                            <td className="py-4 px-4 text-xs font-bold text-slate-700">09:30</td>
-                            <td className="py-4 px-4">
-                              <div onClick={() => toggleAttendance(1)} className={`w-10 h-5 rounded-full p-0.5 cursor-pointer flex transition-colors ${studentsAttendance[1] ? "bg-emerald-400 justify-end" : "bg-gray-200 justify-start"}`}>
-                                <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                              </div>
-                            </td>
-                          </tr>
-                          <tr className="hover:bg-slate-50 transition-colors">
-                            <td className="py-4 px-4 text-xs font-bold text-slate-700">2</td>
-                            <td className="py-4 px-4 text-xs font-bold text-slate-700">Abduqulov Mirsaid</td>
-                            <td className="py-4 px-4 text-xs font-bold text-slate-700">09:30</td>
-                            <td className="py-4 px-4">
-                              <div onClick={() => toggleAttendance(2)} className={`w-10 h-5 rounded-full p-0.5 cursor-pointer flex transition-colors ${studentsAttendance[2] ? "bg-emerald-400 justify-end" : "bg-gray-200 justify-start"}`}>
-                                <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Uyga Vazifa Tab (Asosiy ro'yxat) */}
           {subTab === "Uyga vazifa" && !isAddingHomework && !selectedHomework && (
@@ -789,6 +781,10 @@ export default function Guruhlar() {
   const [stats, setStats] = useState({ groups: 0, teachers: 0, students: 0 });
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [courses, setCourses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   const filteredGroups = groups.filter(g => {
     const q = search.toLowerCase();
@@ -798,31 +794,83 @@ export default function Guruhlar() {
     return name.includes(q) || course.includes(q) || teacherName.includes(q);
   });
 
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+  const currentGroups = filteredGroups.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const fetchGroups = async () => {
+    const token = localStorage.getItem("token");
+    const headers = { "accept": "*/*", "Authorization": `Bearer ${token}` };
+    try {
+      const res = await fetch("/api/v1/groups/all", { headers });
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : Array.isArray(data.data) ? data.data : Array.isArray(data.groups) ? data.groups : [];
+      setGroups(list);
+      setStats(prev => ({ ...prev, groups: list.length }));
+    } catch (err) {
+      setError("Guruhlarni yuklashda xatolik");
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const headers = { "accept": "*/*", "Authorization": `Bearer ${token}` };
 
     const fetchAll = async () => {
       try {
-        const [groupsRes, teachersRes, studentsRes] = await Promise.all([
+        const [groupsRes, teachersRes, studentsRes, coursesRes, roomsRes] = await Promise.all([
           fetch("/api/v1/groups/all", { headers }),
           fetch("/api/v1/teachers", { headers }),
           fetch("/api/v1/students", { headers }),
+          fetch("/api/v1/courses", { headers }),
+          fetch("/api/v1/rooms", { headers }),
         ]);
 
-        const [groupsData, teachersData, studentsData] = await Promise.all([
+        const [groupsData, teachersData, studentsData, coursesData, roomsData] = await Promise.all([
           groupsRes.json(),
           teachersRes.json(),
           studentsRes.json(),
+          coursesRes.json(),
+          roomsRes.json(),
         ]);
 
-        const groupsList = Array.isArray(groupsData.data) ? groupsData.data : [];
+        const groupsList = Array.isArray(groupsData) ? groupsData 
+          : Array.isArray(groupsData.data) ? groupsData.data 
+          : Array.isArray(groupsData.groups) ? groupsData.groups 
+          : [];
         setGroups(groupsList);
+
+        const teachersList = Array.isArray(teachersData) ? teachersData 
+          : Array.isArray(teachersData.data) ? teachersData.data 
+          : Array.isArray(teachersData.teachers) ? teachersData.teachers 
+          : [];
+        setTeachers(teachersList);
+
+        const coursesList = Array.isArray(coursesData) ? coursesData 
+          : Array.isArray(coursesData.data) ? coursesData.data 
+          : Array.isArray(coursesData.courses) ? coursesData.courses 
+          : [];
+        setCourses(coursesList);
+
+        const roomsList = Array.isArray(roomsData) ? roomsData 
+          : Array.isArray(roomsData.data) ? roomsData.data 
+          : Array.isArray(roomsData.rooms) ? roomsData.rooms 
+          : [];
+        setRooms(roomsList);
+
+        const studentsList = Array.isArray(studentsData) ? studentsData 
+          : Array.isArray(studentsData.data) ? studentsData.data 
+          : Array.isArray(studentsData.students) ? studentsData.students 
+          : [];
 
         setStats({
           groups: groupsList.length,
-          teachers: teachersData.total || teachersData.data?.length || 0,
-          students: studentsData.total || studentsData.data?.length || 0,
+          teachers: teachersData.total || teachersList.length || 0,
+          students: studentsData.total || studentsList.length || 0,
         });
 
       } catch (err) {
@@ -977,7 +1025,6 @@ export default function Guruhlar() {
                 <th className="py-4 px-6">Kurs</th>
                 <th className="py-4 px-6">Davomiyligi</th>
                 <th className="py-4 px-6">Dars vaqti</th>
-                <th className="py-4 px-6">Kim qo'shgan</th>
                 <th className="py-4 px-6">Xona</th>
                 <th className="py-4 px-6">O'qituvchi</th>
                 <th className="py-4 px-6">Talabalar</th>
@@ -987,11 +1034,11 @@ export default function Guruhlar() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredGroups.map(g => (
+              {currentGroups.map(g => (
                 <React.Fragment key={g.id}>
-                <tr 
-                  className={`group transition-colors cursor-pointer ${expandedRowId === g.id ? "bg-slate-50/80" : "hover:bg-slate-50/50"}`}
+                <tr
                   onClick={() => setExpandedRowId(expandedRowId === g.id ? null : g.id)}
+                  className={`group transition-colors cursor-pointer ${expandedRowId === g.id ? "bg-slate-50/80" : "hover:bg-slate-50/50"}`}
                 >
                   <td className="py-5 px-6">
                     <div className="flex items-center gap-3">
@@ -1023,13 +1070,7 @@ export default function Guruhlar() {
                   <td className="py-5 px-6">
                     <div className="flex flex-col leading-tight">
                       <span className="text-xs font-bold text-slate-700">{g.start_time || "—"}</span>
-                      {/* <span className="text-[10px] text-slate-400 font-medium mt-1">{g.days || g.lessonDays || "—"}</span> */}
-                    </div>
-                  </td>
-                  <td className="py-5 px-6">
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-xs font-bold text-slate-700">{g.addedBy || g.created_by || "—"}</span>
-                      <span className="text-[10px] text-slate-400 font-medium mt-1">{g.addedAt || g.created_at || "—"}</span>
+                      <span className="text-[10px] text-slate-400 font-medium mt-1">{g.week_day?.join(", ") || g.days || g.lessonDays || "—"}</span>
                     </div>
                   </td>
                   <td className="py-5 px-6 text-xs text-slate-500 font-medium">
@@ -1051,7 +1092,10 @@ export default function Guruhlar() {
                     {g.students || g.studentCount || g.students_count || 0}
                   </td>
                   <td className="py-5 px-6 text-right pr-6" onClick={e => e.stopPropagation()}>
-                    <button className="text-slate-300 hover:text-slate-600 transition-colors">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setExpandedRowId(expandedRowId === g.id ? null : g.id); }}
+                      className="text-slate-300 hover:text-slate-600 transition-colors"
+                    >
                       <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
                     </button>
                   </td>
@@ -1060,7 +1104,7 @@ export default function Guruhlar() {
                 {/* Accordion Row */}
                 {expandedRowId === g.id && (
                   <tr>
-                    <td colSpan="10" className="p-0 border-b border-gray-100 bg-slate-50/30">
+                    <td colSpan="9" className="p-0 border-b border-gray-100 bg-slate-50/30">
                       <ExpandedContent g={g} onClose={() => setExpandedRowId(null)} />
                     </td>
                   </tr>
@@ -1070,6 +1114,42 @@ export default function Guruhlar() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-6 border-t border-gray-100 bg-white">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setCurrentPage(p)}
+                  className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${
+                    currentPage === p 
+                      ? "bg-indigo-50 text-indigo-600" 
+                      : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add Group Modal */}
@@ -1101,40 +1181,51 @@ export default function Guruhlar() {
               />
             </div>
 
-            {/* Kurs ID */}
+            {/* Kurs */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kurs ID <span className="text-red-500">*</span></label>
-              <input
-                type="number"
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kurs <span className="text-red-500">*</span></label>
+              <select
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
-                placeholder="Masalan: 1"
                 value={form.course_id}
                 onChange={e => setForm(f => ({ ...f, course_id: e.target.value }))}
-              />
+              >
+                <option value="">Kursni tanlang</option>
+                {courses.map(course => (
+                  <option key={course.id} value={course.id}>{course.name}</option>
+                ))}
+              </select>
             </div>
 
-            {/* O'qituvchi ID */}
+            {/* O'qituvchi */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">O'qituvchi ID</label>
-              <input
-                type="number"
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">O'qituvchi</label>
+              <select
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
-                placeholder="Masalan: 2"
                 value={form.teacher_id}
                 onChange={e => setForm(f => ({ ...f, teacher_id: e.target.value }))}
-              />
+              >
+                <option value="">O'qituvchini tanlang</option>
+                {teachers.map(teacher => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.first_name} {teacher.last_name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Xona ID */}
+            {/* Xona */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Xona ID</label>
-              <input
-                type="number"
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Xona</label>
+              <select
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all"
-                placeholder="Masalan: 3"
                 value={form.room_id}
                 onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
-              />
+              >
+                <option value="">Xonani tanlang</option>
+                {rooms.map(room => (
+                  <option key={room.id} value={room.id}>{room.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Dars kunlari */}
