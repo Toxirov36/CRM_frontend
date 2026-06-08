@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "../components/Modal";
 
 const DAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"];
@@ -22,7 +23,7 @@ function ExpandedContent({ g, onClose }) {
   const [topicType, setTopicType] = useState("Boshqa");
   const [topicName, setTopicName] = useState("CRM groupinner full");
   const [studentsAttendance, setStudentsAttendance] = useState({ 1: true, 2: false });
-  
+
   const [subTab, setSubTab] = useState("Uyga vazifa");
   const [isAddingHomework, setIsAddingHomework] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState(null);
@@ -30,13 +31,11 @@ function ExpandedContent({ g, onClose }) {
   const [checkingTab, setCheckingTab] = useState("Kutayotganlar");
   const [homeworkScore, setHomeworkScore] = useState(60);
 
-  const studentsWithSubmission = [
-    { id: 1, name: "Nosirxon Ziyovutdinov", time: "15 May, 2026 09:54", status: "Kutayabti", files: 3 },
-    { id: 2, name: "Mirsaid Abduqulov", time: "15 May, 2026 04:57", status: "Kutayabti", files: 1 },
-    { id: 3, name: "Oydin Qalandarova Kamolovna", time: "14 May, 2026 17:06", status: "Kutayabti", files: 2 },
-    { id: 4, name: "Guliza Ayitqulova", time: "15 May, 2026 10:09", status: "Kutayabti", files: 3 },
-    { id: 5, name: "Mohirbek Solijonov", time: "15 May, 2026 06:48", status: "Kutayabti", files: 0 },
-  ];
+  // API states for homework results
+  const [homeworkResults, setHomeworkResults] = useState({ pending: [], completed: [], rejected: [], notSubmitted: [] });
+  const [resultCounts, setResultCounts] = useState({ pending: 0, completed: 0, rejected: 0, notSubmitted: 0 });
+  const [loadingResults, setLoadingResults] = useState(false);
+  const [studentsWithSubmission, setStudentsWithSubmission] = useState([]);
 
   const homeworks = [
     { id: 41, title: "Youtube project added chat with socket.io", users: 18, pending: 0, completed: 11, assigned: "19 Yan, 2026 17:20", deadline: "20 Yan, 2026 09:20", date: "19 Yan, 2026" },
@@ -88,7 +87,7 @@ function ExpandedContent({ g, onClose }) {
         const json = await res.json();
         if (json.success && json.data) {
           setSchedulesData(json.data);
-          const months = Object.keys(json.data).sort((a,b)=>Number(a)-Number(b));
+          const months = Object.keys(json.data).sort((a, b) => Number(a) - Number(b));
           if (months.length > 0) {
             const initialMonth = months.includes("1") ? "1" : months[0];
             setCourseMonth(initialMonth);
@@ -125,13 +124,124 @@ function ExpandedContent({ g, onClose }) {
     }
   }, [courseMonth, schedulesData]);
 
+  // Load homework results when homework is selected
+  useEffect(() => {
+    if (selectedHomework && activeTab === "Guruh darsliklari") {
+      const loadResults = async () => {
+        setLoadingResults(true);
+        try {
+          const token = localStorage.getItem("token");
+
+          // Fetch pending students
+          const pendingRes = await fetch(`/api/v1/homework/group/${g.id}/homework/${selectedHomework.id}/results?status=pending`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const pendingData = await pendingRes.json();
+          const pendingStudents = (pendingData.success && pendingData.data?.students)
+            ? pendingData.data.students.map(s => ({
+              id: s.id,
+              name: `${s.first_name} ${s.last_name}`,
+              time: new Date().toLocaleDateString("uz-UZ"),
+              status: "pending",
+              files: 0
+            })) : [];
+
+          // Fetch completed students
+          const completedRes = await fetch(`/api/v1/homework/group/${g.id}/homework/${selectedHomework.id}/results?status=completed`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const completedData = await completedRes.json();
+          const completedStudents = (completedData.success && completedData.data?.students)
+            ? completedData.data.students.map(s => ({
+              id: s.id,
+              name: `${s.first_name} ${s.last_name}`,  // ✅ ...s emas
+              time: new Date().toLocaleDateString("uz-UZ"),
+              status: "completed",
+              files: 0
+            })) : [];
+
+          // Fetch rejected students
+          const rejectedRes = await fetch(`/api/v1/homework/group/${g.id}/homework/${selectedHomework.id}/results?status=rejected`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const rejectedData = await rejectedRes.json();
+          const rejectedStudents = (rejectedData.success && rejectedData.data?.students)
+            ? rejectedData.data.students.map(s => ({
+              id: s.id,
+              name: `${s.first_name} ${s.last_name}`,  // ✅ ...s emas
+              time: new Date().toLocaleDateString("uz-UZ"),
+              status: "rejected",
+              files: 0
+            })) : [];
+
+          // Fetch not submitted students
+          const notSubmittedRes = await fetch(`/api/v1/homework/group/${g.id}/homework/${selectedHomework.id}/results`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const notSubmittedData = await notSubmittedRes.json();
+          const notSubmittedStudents = (notSubmittedData.success && notSubmittedData.data?.students)
+            ? notSubmittedData.data.students.map(s => ({
+              id: s.id,
+              name: `${s.first_name} ${s.last_name}`,  // ✅ ...s emas
+              time: new Date().toLocaleDateString("uz-UZ"),
+              status: "notSubmitted",
+              files: 0
+            })) : [];
+            
+          setResultCounts({
+            pending: pendingStudents.length,
+            completed: completedStudents.length,
+            rejected: rejectedStudents.length,
+            notSubmitted: notSubmittedStudents.length
+          });
+
+          setHomeworkResults({
+            pending: pendingStudents,
+            completed: completedStudents,
+            rejected: rejectedStudents,
+            notSubmitted: notSubmittedStudents
+          });
+
+          // Set initial students for current tab
+          const tabStatusMap = {
+            "Kutayotganlar": pendingStudents,
+            "Qaytarilganlar": rejectedStudents,
+            "Qabul qilinganlar": completedStudents,
+            "Bajarilmagan": notSubmittedStudents
+          };
+          setStudentsWithSubmission(tabStatusMap[checkingTab] || []);
+        } catch (err) {
+          console.error("Error loading homework results:", err);
+        } finally {
+          setLoadingResults(false);
+        }
+      };
+
+      loadResults();
+    }
+  }, [selectedHomework, activeTab, g.id, checkingTab]);
+
+  // Update displayed students when checking tab changes
+  useEffect(() => {
+    if (selectedHomework) {
+      const tabStatusMap = {
+        "Kutayotganlar": homeworkResults.pending,
+        "Qaytarilganlar": homeworkResults.rejected,
+        "Qabul qilinganlar": homeworkResults.completed,
+        "Bajarilmagan": homeworkResults.notSubmitted
+      };
+
+      setStudentsWithSubmission(tabStatusMap[checkingTab] || []);
+    }
+  }, [checkingTab, selectedHomework, homeworkResults]);
+
   return (
     <div className="p-6 md:p-8 animate-in slide-in-from-top-2 duration-300 ease-out">
       {/* Accordion Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 mr-2 transition-colors">
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
           </button>
           <h3 className="text-xl font-extrabold text-slate-800">{g.name}</h3>
           <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-50 text-green-500 border border-green-100 tracking-wide uppercase">
@@ -139,7 +249,7 @@ function ExpandedContent({ g, onClose }) {
           </span>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-white shadow-sm transition-all active:scale-95 bg-gray-50">
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6" /></svg>
           Statistika
         </button>
       </div>
@@ -147,8 +257,8 @@ function ExpandedContent({ g, onClose }) {
       {/* Accordion Tabs */}
       <div className="flex gap-8 border-b border-gray-200/60 mb-6 overflow-x-auto custom-scrollbar">
         {["Ma'lumotlar", "Guruh darsliklari", "Akademik davomati"].map(tab => (
-          <button 
-            key={tab} 
+          <button
+            key={tab}
             onClick={() => setActiveTab(tab)}
             className={`pb-3 text-sm font-bold whitespace-nowrap relative transition-colors ${activeTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
           >
@@ -169,7 +279,7 @@ function ExpandedContent({ g, onClose }) {
                 className="w-full bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white select-none hover:bg-[#2567c5] transition-colors"
               >
                 <h4 className="font-bold text-sm">Guruh mentorlari</h4>
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${panels.mentors ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6"/></svg>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${panels.mentors ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
               </button>
               <div className={`overflow-hidden transition-all duration-300 ${panels.mentors ? "max-h-[500px]" : "max-h-0"}`}>
                 <div className="p-6 space-y-4">
@@ -199,7 +309,7 @@ function ExpandedContent({ g, onClose }) {
                 className="w-full bg-[#2D78D2] px-5 py-3 flex items-center justify-between text-white select-none hover:bg-[#2567c5] transition-colors"
               >
                 <h4 className="font-bold text-sm">Parametrlar</h4>
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${panels.params ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6"/></svg>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${panels.params ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
               </button>
               <div className={`overflow-hidden transition-all duration-300 ${panels.params ? "max-h-[1000px]" : "max-h-0"}`}>
                 <div className="p-5">
@@ -208,7 +318,7 @@ function ExpandedContent({ g, onClose }) {
                       <tr><td className="py-2.5 text-slate-500 font-medium">Kurs:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.name || "—"}</td></tr>
                       <tr><td className="py-2.5 text-slate-500 font-medium">O'rta yosh:</td><td className="py-2.5 text-right font-bold text-slate-800">—</td></tr>
                       <tr><td className="py-2.5 text-slate-500 font-medium">O'quvchilar sig'imi:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.max_student || "—"}</td></tr>
-                      <tr><td className="py-2.5 text-slate-500 font-medium">Mavjud o'quvchilar:</td><td className="py-2.5 text-right font-bold text-slate-800">{g.students || 0}</td></tr>
+                      <tr><td className="py-2.5 text-slate-500 font-medium">Mavjud o'quvchilar:</td><td className="py-2.5 text-right font-bold text-slate-800">{Array.isArray(g.students) ? g.students.length : (g.students || 0)}</td></tr>
                       <tr><td className="py-2.5 text-slate-500 font-medium">O'quv oyidagi darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800">{schedulesData[courseMonth]?.length || "—"}</td></tr>
                       <tr><td className="py-2.5 text-slate-500 font-medium">Kurs davomiyligi (oy):</td><td className="py-2.5 text-right font-bold text-slate-800">{g.courses?.duration_month || "—"} oy</td></tr>
                       <tr><td className="py-2.5 text-slate-500 font-medium border-b-0">Jami darslar soni:</td><td className="py-2.5 text-right font-bold text-slate-800 border-b-0">{Object.values(schedulesData).reduce((sum, arr) => sum + arr.length, 0) || "—"}</td></tr>
@@ -223,26 +333,26 @@ function ExpandedContent({ g, onClose }) {
           <div className="mt-8 animate-in fade-in duration-300">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-5">
-                <button 
+                <button
                   onClick={() => {
-                    const months = Object.keys(schedulesData).sort((a,b)=>Number(a)-Number(b));
+                    const months = Object.keys(schedulesData).sort((a, b) => Number(a) - Number(b));
                     const currentIndex = months.indexOf(courseMonth);
                     if (currentIndex > 0) setCourseMonth(months[currentIndex - 1]);
                   }}
                   className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95"
                 >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
                 <span className="text-[13px] font-extrabold text-slate-700">{courseMonth}-o'quv oyi</span>
-                <button 
+                <button
                   onClick={() => {
-                    const months = Object.keys(schedulesData).sort((a,b)=>Number(a)-Number(b));
+                    const months = Object.keys(schedulesData).sort((a, b) => Number(a) - Number(b));
                     const currentIndex = months.indexOf(courseMonth);
                     if (currentIndex < months.length - 1 && currentIndex !== -1) setCourseMonth(months[currentIndex + 1]);
                   }}
                   className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95"
                 >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar">
@@ -303,7 +413,7 @@ function ExpandedContent({ g, onClose }) {
                   <h4 className="font-extrabold text-sm text-slate-800 mb-4">Ma'lumot</h4>
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white">
-                      <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                      <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-800">Sultonqulov Abduxoshim</p>
@@ -371,14 +481,14 @@ function ExpandedContent({ g, onClose }) {
 
       {activeTab === "Guruh darsliklari" && (
         <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-6 mt-2">
-          
+
           {/* Sub-tabs Header */}
           <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
             <div className="flex items-center gap-6">
               <h2 className="text-[15px] font-extrabold text-slate-800">
                 Guruh darsliklari
               </h2>
-              
+
               <div className="flex bg-slate-50/80 p-1 rounded-[10px] border border-gray-100/50">
                 {["Uyga vazifa", "Videolar", "Imtihonlar", "Jurnal"].map(tab => (
                   <button
@@ -389,9 +499,8 @@ function ExpandedContent({ g, onClose }) {
                       setSelectedHomework(null);
                       setSelectedSubmission(null);
                     }}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      subTab === tab ? "bg-white text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.05)]" : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-                    }`}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${subTab === tab ? "bg-white text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.05)]" : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                      }`}
                   >
                     {tab}
                   </button>
@@ -400,7 +509,7 @@ function ExpandedContent({ g, onClose }) {
             </div>
 
             {subTab === "Uyga vazifa" && !isAddingHomework && !selectedHomework && (
-              <button 
+              <button
                 onClick={() => setIsAddingHomework(true)}
                 className="px-4 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]"
               >
@@ -409,7 +518,7 @@ function ExpandedContent({ g, onClose }) {
             )}
 
             {subTab === "Videolar" && (
-              <button 
+              <button
                 className="px-5 py-2 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]"
               >
                 Qo'shish
@@ -427,13 +536,13 @@ function ExpandedContent({ g, onClose }) {
                     <th className="py-4 px-2 w-10">#</th>
                     <th className="py-4 px-2">Mavzu</th>
                     <th className="py-4 px-2 w-12 text-center text-slate-400">
-                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                     </th>
                     <th className="py-4 px-2 w-12 text-center text-yellow-500">
-                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
                     </th>
                     <th className="py-4 px-2 w-12 text-center text-emerald-500">
-                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                      <svg className="inline" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" /></svg>
                     </th>
                     <th className="py-4 px-2 w-32">Berilgan vaqt</th>
                     <th className="py-4 px-2 w-32">Tugash vaqti</th>
@@ -450,15 +559,15 @@ function ExpandedContent({ g, onClose }) {
                       <td className="py-4 px-2 text-[13px] font-bold text-slate-700 text-center">{hw.pending}</td>
                       <td className="py-4 px-2 text-[13px] font-bold text-slate-700 text-center">{hw.completed}</td>
                       <td className="py-4 px-2 text-[13px] font-semibold text-slate-600">
-                        {hw.assigned.split(" ")[0]} {hw.assigned.split(" ")[1]} <br/> <span className="text-slate-400">{hw.assigned.split(" ")[2]}</span>
+                        {hw.assigned.split(" ")[0]} {hw.assigned.split(" ")[1]} <br /> <span className="text-slate-400">{hw.assigned.split(" ")[2]}</span>
                       </td>
                       <td className="py-4 px-2 text-[13px] font-semibold text-slate-600">
-                        {hw.deadline.split(" ")[0]} {hw.deadline.split(" ")[1]} <br/> <span className="text-slate-400">{hw.deadline.split(" ")[2]}</span>
+                        {hw.deadline.split(" ")[0]} {hw.deadline.split(" ")[1]} <br /> <span className="text-slate-400">{hw.deadline.split(" ")[2]}</span>
                       </td>
                       <td className="py-4 px-2 text-[13px] font-semibold text-slate-600">{hw.date}</td>
                       <td className="py-4 px-2 text-right">
                         <button className="text-slate-400 hover:text-slate-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
                         </button>
                       </td>
                     </tr>
@@ -471,279 +580,279 @@ function ExpandedContent({ g, onClose }) {
           {/* Homework Checking View (Image 1) */}
           {subTab === "Uyga vazifa" && selectedHomework && !selectedSubmission && (
             <div className="animate-in fade-in slide-in-from-right-2 duration-300">
-               <button 
-                 onClick={() => setSelectedHomework(null)} 
-                 className="flex items-center gap-2 text-slate-800 font-extrabold text-lg mb-8 transition-colors hover:text-emerald-600"
-               >
-                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
-                 {selectedHomework.title}
-               </button>
+              <button
+                onClick={() => setSelectedHomework(null)}
+                className="flex items-center gap-2 text-slate-800 font-extrabold text-lg mb-8 transition-colors hover:text-emerald-600"
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+                {selectedHomework.title}
+              </button>
 
-               <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
-                 <div className="flex gap-16">
-                   <div>
-                     <p className="text-xs font-bold text-slate-400 mb-1">Mavzu</p>
-                     <p className="text-[15px] font-extrabold text-slate-800">{selectedHomework.title}</p>
-                   </div>
-                   <div>
-                     <p className="text-xs font-bold text-slate-400 mb-1">Tugash vaqti</p>
-                     <p className="text-[15px] font-bold text-slate-800">{selectedHomework.deadline}</p>
-                   </div>
-                 </div>
-               </div>
+              <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
+                <div className="flex gap-16">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 mb-1">Mavzu</p>
+                    <p className="text-[15px] font-extrabold text-slate-800">{selectedHomework.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 mb-1">Tugash vaqti</p>
+                    <p className="text-[15px] font-bold text-slate-800">{selectedHomework.deadline}</p>
+                  </div>
+                </div>
+              </div>
 
-               {/* Tabs */}
-               <div className="flex gap-8 border-b border-gray-100 mb-6 px-2">
-                 {[
-                   { name: "Kutayotganlar", count: 5 },
-                   { name: "Qaytarilganlar", count: 0 },
-                   { name: "Qabul qilinganlar", count: 0 },
-                   { name: "Bajarilmagan", count: 6 },
-                 ].map(tab => (
-                   <button
-                     key={tab.name}
-                     onClick={() => setCheckingTab(tab.name)}
-                     className={`pb-3 text-[13px] font-bold relative transition-colors flex items-center gap-2 ${checkingTab === tab.name ? "text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
-                   >
-                     {tab.name}
-                     {tab.count > 0 && (
-                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${checkingTab === tab.name ? "bg-yellow-400 text-yellow-900" : "bg-yellow-100 text-yellow-700"}`}>
-                         {tab.count}
-                       </span>
-                     )}
-                     {checkingTab === tab.name && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500 rounded-t-full" />}
-                   </button>
-                 ))}
-               </div>
+              {/* Tabs */}
+              <div className="flex gap-8 border-b border-gray-100 mb-6 px-2">
+                {[
+                  { name: "Kutayotganlar", countKey: "pending" },
+                  { name: "Qaytarilganlar", countKey: "rejected" },
+                  { name: "Qabul qilinganlar", countKey: "completed" },
+                  { name: "Bajarilmagan", countKey: "notSubmitted" },
+                ].map(tab => (
+                  <button
+                    key={tab.name}
+                    onClick={() => setCheckingTab(tab.name)}
+                    className={`pb-3 text-[13px] font-bold relative transition-colors flex items-center gap-2 ${checkingTab === tab.name ? "text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    {tab.name}
+                    {tab.count > 0 && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${checkingTab === tab.name ? "bg-yellow-400 text-yellow-900" : "bg-yellow-100 text-yellow-700"}`}>
+                        {resultCounts[tab.countKey]}
+                      </span>
+                    )}
+                    {checkingTab === tab.name && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500 rounded-t-full" />}
+                  </button>
+                ))}
+              </div>
 
-               {/* Table */}
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left border-collapse">
-                   <thead>
-                     <tr className="text-xs font-bold text-slate-400 border-b border-gray-100">
-                       <th className="py-4 px-4 w-1/2">O'quvchi ismi</th>
-                       <th className="py-4 px-4 w-1/2">Uyga vazifa jo'natilgan vaqt</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-gray-50">
-                     {studentsWithSubmission.map(student => (
-                       <tr key={student.id} onClick={() => setSelectedSubmission(student)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
-                         <td className="py-4 px-4 text-[13px] font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">{student.name}</td>
-                         <td className="py-4 px-4 text-[13px] font-semibold text-slate-600">{student.time}</td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-xs font-bold text-slate-400 border-b border-gray-100">
+                      <th className="py-4 px-4 w-1/2">O'quvchi ismi</th>
+                      <th className="py-4 px-4 w-1/2">Uyga vazifa jo'natilgan vaqt</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {studentsWithSubmission.map(student => (
+                      <tr key={student.id} onClick={() => setSelectedSubmission(student)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                        <td className="py-4 px-4 text-[13px] font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">{student.name}</td>
+                        <td className="py-4 px-4 text-[13px] font-semibold text-slate-600">{student.time}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* Student Submission Grading View (Image 2 & 3) */}
           {subTab === "Uyga vazifa" && selectedHomework && selectedSubmission && (
             <div className="animate-in fade-in slide-in-from-right-2 duration-300">
-               {/* Breadcrumbs */}
-               <div className="flex items-center gap-2 text-slate-800 font-extrabold text-[15px] mb-8">
-                 <button onClick={() => setSelectedSubmission(null)} className="hover:text-emerald-600 transition-colors">
-                   {checkingTab}
-                 </button>
-                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-400" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
-                 <span className="text-slate-500">Uyga vazifa</span>
-               </div>
+              {/* Breadcrumbs */}
+              <div className="flex items-center gap-2 text-slate-800 font-extrabold text-[15px] mb-8">
+                <button onClick={() => setSelectedSubmission(null)} className="hover:text-emerald-600 transition-colors">
+                  {checkingTab}
+                </button>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-400" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+                <span className="text-slate-500">Uyga vazifa</span>
+              </div>
 
-               <div className="max-w-4xl space-y-6">
-                 {/* Uy vazifasi */}
-                 <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
-                   <h3 className="text-[15px] font-extrabold text-slate-800 mb-4">Uy vazifasi</h3>
-                   <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-                     <p className="text-[13px] font-semibold text-slate-400 mb-2">Izoh:</p>
-                     <p className="text-[14px] font-semibold text-slate-800">{selectedHomework.title}</p>
-                   </div>
-                 </div>
+              <div className="max-w-4xl space-y-6">
+                {/* Uy vazifasi */}
+                <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
+                  <h3 className="text-[15px] font-extrabold text-slate-800 mb-4">Uy vazifasi</h3>
+                  <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <p className="text-[13px] font-semibold text-slate-400 mb-2">Izoh:</p>
+                    <p className="text-[14px] font-semibold text-slate-800">{selectedHomework.title}</p>
+                  </div>
+                </div>
 
-                 {/* Student Info */}
-                 <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
-                   <h3 className="text-[18px] font-extrabold text-slate-800 mb-6">{selectedSubmission.name}</h3>
-                   
-                   <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm flex items-center gap-12 mb-6">
-                     <div>
-                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Vaqti:</p>
-                       <p className="text-[14px] font-extrabold text-slate-800">{selectedSubmission.time}</p>
-                     </div>
-                     <div>
-                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Fayllar soni:</p>
-                       <p className="text-[14px] font-extrabold text-slate-800">{selectedSubmission.files}</p>
-                     </div>
-                     <div>
-                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Status:</p>
-                       <span className="inline-block px-3 py-1 bg-yellow-50 border border-yellow-200 text-yellow-600 text-[11px] font-extrabold rounded-md">
-                         {selectedSubmission.status}
-                       </span>
-                     </div>
-                   </div>
+                {/* Student Info */}
+                <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
+                  <h3 className="text-[18px] font-extrabold text-slate-800 mb-6">{selectedSubmission.name}</h3>
 
-                   <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-                     <p className="text-[14px] font-semibold text-slate-500 mb-4">Fayl: <span className="font-extrabold text-slate-800">{selectedSubmission.files}</span></p>
-                     <div className="flex gap-4 mb-6">
-                       {/* Mock images */}
-                       <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
-                         <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
-                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
-                       </div>
-                       <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
-                         <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
-                       </div>
-                       <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
-                         <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
-                       </div>
-                     </div>
+                  <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm flex items-center gap-12 mb-6">
+                    <div>
+                      <p className="text-[13px] font-semibold text-slate-400 mb-1">Vaqti:</p>
+                      <p className="text-[14px] font-extrabold text-slate-800">{selectedSubmission.time}</p>
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-slate-400 mb-1">Fayllar soni:</p>
+                      <p className="text-[14px] font-extrabold text-slate-800">{selectedSubmission.files}</p>
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-slate-400 mb-1">Status:</p>
+                      <span className="inline-block px-3 py-1 bg-yellow-50 border border-yellow-200 text-yellow-600 text-[11px] font-extrabold rounded-md">
+                        {selectedSubmission.status}
+                      </span>
+                    </div>
+                  </div>
 
-                     <div className="bg-slate-50 rounded-xl p-4 border border-gray-100 border-l-4 border-l-blue-500">
-                       <p className="text-[13px] font-semibold text-slate-400 mb-1">Uyga vazifa izohi:</p>
-                       <a href="#" className="text-[14px] font-bold text-blue-600 hover:underline break-all">
-                         https://github.com/{selectedSubmission.name.split(" ")[0]}/CRM_Fullsatck:
-                       </a>
-                     </div>
-                   </div>
-                 </div>
+                  <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <p className="text-[14px] font-semibold text-slate-500 mb-4">Fayl: <span className="font-extrabold text-slate-800">{selectedSubmission.files}</span></p>
+                    <div className="flex gap-4 mb-6">
+                      {/* Mock images */}
+                      <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
+                        <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                      </div>
+                      <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
+                        <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
+                      </div>
+                      <div className="w-32 h-20 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group cursor-pointer">
+                        <div className="absolute inset-0 bg-slate-200 animate-pulse"></div>
+                      </div>
+                    </div>
 
-                 {/* Grading Box */}
-                 <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
-                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3 mb-8">
-                     <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">i</div>
-                     <p className="text-sm font-semibold text-blue-800">
-                       60-100 oralig'ida ball qo'yilgan vazifa 'Qabul qilingan', 0-59 oralig'ida ball qo'yilgan vazifa 'Qaytarilgan' hisoblanadi.
-                     </p>
-                   </div>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-gray-100 border-l-4 border-l-blue-500">
+                      <p className="text-[13px] font-semibold text-slate-400 mb-1">Uyga vazifa izohi:</p>
+                      <a href="#" className="text-[14px] font-bold text-blue-600 hover:underline break-all">
+                        https://github.com/{selectedSubmission.name.split(" ")[0]}/CRM_Fullsatck:
+                      </a>
+                    </div>
+                  </div>
+                </div>
 
-                   <div className="mb-10">
-                     <h4 className="text-[15px] font-extrabold text-slate-800 mb-6">Ball</h4>
-                     <div className="flex items-center gap-6">
-                       <div className="flex-1 relative">
-                         <input 
-                           type="range" 
-                           min="0" max="100" 
-                           value={homeworkScore} 
-                           onChange={e => setHomeworkScore(e.target.value)}
-                           className="w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer outline-none overflow-hidden"
-                           style={{
-                             background: `linear-gradient(to right, #10B981 0%, #10B981 ${homeworkScore}%, #E5E7EB ${homeworkScore}%, #E5E7EB 100%)`
-                           }}
-                         />
-                         <div className="absolute top-1/2 left-[60%] w-3 h-3 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-sm pointer-events-none"></div>
-                         <p className="absolute -bottom-6 left-[60%] -translate-x-1/2 text-xs font-bold text-slate-500">O'tish bali</p>
-                       </div>
-                       <div className="w-16 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center font-bold text-slate-800 text-[15px] shadow-sm">
-                         {homeworkScore}
-                       </div>
-                     </div>
-                   </div>
+                {/* Grading Box */}
+                <div className="bg-slate-50/50 rounded-2xl border border-gray-100 p-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3 mb-8">
+                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">i</div>
+                    <p className="text-sm font-semibold text-blue-800">
+                      60-100 oralig'ida ball qo'yilgan vazifa 'Qabul qilingan', 0-59 oralig'ida ball qo'yilgan vazifa 'Qaytarilgan' hisoblanadi.
+                    </p>
+                  </div>
 
-                   <div className="mb-6">
-                     <h4 className="text-[15px] font-extrabold text-slate-800 mb-4">Fayllar</h4>
-                     <button className="w-full py-8 border border-dashed border-emerald-400 bg-emerald-50/30 rounded-2xl text-center hover:bg-emerald-50/60 transition-colors group">
-                       <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 mx-auto mb-3 group-hover:scale-110 transition-transform">
-                         <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                       </div>
-                       <p className="text-[15px] font-extrabold text-slate-800 mb-2">Faylni yuklash uchun ushbu hudud ustiga bosing yoki faylni shu yerga olib keling</p>
-                       <p className="text-[13px] font-semibold text-slate-400">.jpg, .png, .pdf, .mp4, .docs formatlaridan birida bo'lishi mumkin</p>
-                     </button>
-                   </div>
+                  <div className="mb-10">
+                    <h4 className="text-[15px] font-extrabold text-slate-800 mb-6">Ball</h4>
+                    <div className="flex items-center gap-6">
+                      <div className="flex-1 relative">
+                        <input
+                          type="range"
+                          min="0" max="100"
+                          value={homeworkScore}
+                          onChange={e => setHomeworkScore(e.target.value)}
+                          className="w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer outline-none overflow-hidden"
+                          style={{
+                            background: `linear-gradient(to right, #10B981 0%, #10B981 ${homeworkScore}%, #E5E7EB ${homeworkScore}%, #E5E7EB 100%)`
+                          }}
+                        />
+                        <div className="absolute top-1/2 left-[60%] w-3 h-3 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-sm pointer-events-none"></div>
+                        <p className="absolute -bottom-6 left-[60%] -translate-x-1/2 text-xs font-bold text-slate-500">O'tish bali</p>
+                      </div>
+                      <div className="w-16 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center font-bold text-slate-800 text-[15px] shadow-sm">
+                        {homeworkScore}
+                      </div>
+                    </div>
+                  </div>
 
-                   <div className="mb-8 relative">
-                     <textarea 
-                       className="w-full h-24 p-4 pr-12 bg-slate-50 border border-gray-100 rounded-xl outline-none text-sm font-semibold text-slate-700 resize-none focus:border-emerald-400 transition-colors"
-                       placeholder="Izohingiz"
-                     ></textarea>
-                     <button className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-200">
-                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                     </button>
-                   </div>
+                  <div className="mb-6">
+                    <h4 className="text-[15px] font-extrabold text-slate-800 mb-4">Fayllar</h4>
+                    <button className="w-full py-8 border border-dashed border-emerald-400 bg-emerald-50/30 rounded-2xl text-center hover:bg-emerald-50/60 transition-colors group">
+                      <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                      </div>
+                      <p className="text-[15px] font-extrabold text-slate-800 mb-2">Faylni yuklash uchun ushbu hudud ustiga bosing yoki faylni shu yerga olib keling</p>
+                      <p className="text-[13px] font-semibold text-slate-400">.jpg, .png, .pdf, .mp4, .docs formatlaridan birida bo'lishi mumkin</p>
+                    </button>
+                  </div>
 
-                   <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
-                     <button className="px-6 py-2.5 rounded-xl border border-gray-200 text-[13px] font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                       Bekor qilish
-                     </button>
-                     <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-[13px] font-bold hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]">
-                       Yuborish
-                     </button>
-                   </div>
-                 </div>
-               </div>
+                  <div className="mb-8 relative">
+                    <textarea
+                      className="w-full h-24 p-4 pr-12 bg-slate-50 border border-gray-100 rounded-xl outline-none text-sm font-semibold text-slate-700 resize-none focus:border-emerald-400 transition-colors"
+                      placeholder="Izohingiz"
+                    ></textarea>
+                    <button className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-200">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
+                    <button className="px-6 py-2.5 rounded-xl border border-gray-200 text-[13px] font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                      Bekor qilish
+                    </button>
+                    <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-[13px] font-bold hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]">
+                      Yuborish
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Yangi Uyga Vazifa Form */}
           {subTab === "Uyga vazifa" && isAddingHomework && (
             <div className="animate-in fade-in slide-in-from-right-2 duration-300">
-               <button 
-                 onClick={() => setIsAddingHomework(false)} 
-                 className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-extrabold text-sm mb-8 transition-colors"
-               >
-                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
-                 Yangi uyga vazifa yaratish
-               </button>
-               
-               <div className="max-w-3xl">
-                 <div className="mb-6">
-                   <label className="block text-[13px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
-                   <select className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-500 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-colors appearance-none cursor-pointer">
-                     <option>Mavzulardan birini tanlang</option>
-                     <option>Youtube project added chat with socket.io</option>
-                     <option>socket.io</option>
-                   </select>
-                 </div>
+              <button
+                onClick={() => setIsAddingHomework(false)}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-extrabold text-sm mb-8 transition-colors"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+                Yangi uyga vazifa yaratish
+              </button>
 
-                 <div className="mb-6">
-                   <label className="block text-[13px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Izoh</label>
-                   <div className="border border-gray-200 rounded-xl overflow-hidden bg-white focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-50 transition-all">
-                     {/* Editor Toolbar */}
-                     <div className="flex items-center gap-4 p-3 border-b border-gray-100 bg-slate-50/50 flex-wrap">
-                       <div className="flex gap-2 text-slate-500 font-bold text-sm">
-                         <button className="px-1 hover:text-slate-900 transition-colors">H1</button>
-                         <button className="px-1 hover:text-slate-900 transition-colors">H2</button>
-                       </div>
-                       <div className="h-4 w-px bg-gray-200"></div>
-                       <button className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">Sans Serif <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
-                       <button className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">Normal <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
-                       <div className="h-4 w-px bg-gray-200"></div>
-                       <div className="flex gap-3 text-slate-500">
-                         <button className="font-bold hover:text-slate-900 transition-colors">B</button>
-                         <button className="italic hover:text-slate-900 transition-colors font-serif">I</button>
-                         <button className="underline hover:text-slate-900 transition-colors">U</button>
-                         <button className="line-through hover:text-slate-900 transition-colors">S</button>
-                         <button className="hover:text-slate-900 transition-colors">"</button>
-                         <button className="hover:text-slate-900 transition-colors">&lt;/&gt;</button>
-                       </div>
-                       <div className="h-4 w-px bg-gray-200"></div>
-                       <div className="flex gap-3 text-slate-500">
-                         <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></button>
-                         <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 4h4v4H3zm6 1h12v2H9zm-6 5h4v4H3zm6 1h12v2H9zm-6 5h4v4H3zm6 1h12v2H9z"/></svg></button>
-                         <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
-                       </div>
-                     </div>
-                     <textarea className="w-full p-4 h-40 outline-none text-[13px] font-medium resize-none text-slate-700" placeholder=""></textarea>
-                   </div>
-                 </div>
+              <div className="max-w-3xl">
+                <div className="mb-6">
+                  <label className="block text-[13px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
+                  <select className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-500 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-colors appearance-none cursor-pointer">
+                    <option>Mavzulardan birini tanlang</option>
+                    <option>Youtube project added chat with socket.io</option>
+                    <option>socket.io</option>
+                  </select>
+                </div>
 
-                 <div className="mb-8">
-                   <button className="w-full py-4 border border-dashed border-gray-300 rounded-xl text-slate-400 font-bold text-sm hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-500 transition-colors flex items-center justify-center gap-2">
-                     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                     Yuklash
-                   </button>
-                 </div>
+                <div className="mb-6">
+                  <label className="block text-[13px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Izoh</label>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden bg-white focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-50 transition-all">
+                    {/* Editor Toolbar */}
+                    <div className="flex items-center gap-4 p-3 border-b border-gray-100 bg-slate-50/50 flex-wrap">
+                      <div className="flex gap-2 text-slate-500 font-bold text-sm">
+                        <button className="px-1 hover:text-slate-900 transition-colors">H1</button>
+                        <button className="px-1 hover:text-slate-900 transition-colors">H2</button>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <button className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">Sans Serif <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button>
+                      <button className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">Normal <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex gap-3 text-slate-500">
+                        <button className="font-bold hover:text-slate-900 transition-colors">B</button>
+                        <button className="italic hover:text-slate-900 transition-colors font-serif">I</button>
+                        <button className="underline hover:text-slate-900 transition-colors">U</button>
+                        <button className="line-through hover:text-slate-900 transition-colors">S</button>
+                        <button className="hover:text-slate-900 transition-colors">"</button>
+                        <button className="hover:text-slate-900 transition-colors">&lt;/&gt;</button>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex gap-3 text-slate-500">
+                        <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" /></svg></button>
+                        <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 4h4v4H3zm6 1h12v2H9zm-6 5h4v4H3zm6 1h12v2H9zm-6 5h4v4H3zm6 1h12v2H9z" /></svg></button>
+                        <button className="hover:text-slate-900 transition-colors"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></button>
+                      </div>
+                    </div>
+                    <textarea className="w-full p-4 h-40 outline-none text-[13px] font-medium resize-none text-slate-700" placeholder=""></textarea>
+                  </div>
+                </div>
 
-                 <div className="flex items-center justify-end gap-3">
-                   <button 
-                     onClick={() => setIsAddingHomework(false)} 
-                     className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                   >
-                     Bekor qilish
-                   </button>
-                   <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]">
-                     E'lon qilish
-                   </button>
-                 </div>
-               </div>
+                <div className="mb-8">
+                  <button className="w-full py-4 border border-dashed border-gray-300 rounded-xl text-slate-400 font-bold text-sm hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-500 transition-colors flex items-center justify-center gap-2">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                    Yuklash
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => setIsAddingHomework(false)}
+                    className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 active:bg-emerald-700 transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.3)]">
+                    E'lon qilish
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -760,6 +869,7 @@ function ExpandedContent({ g, onClose }) {
 }
 
 export default function Guruhlar() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Guruhlar");
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -776,6 +886,7 @@ export default function Guruhlar() {
     week_day: [],
     start_time: "",
     max_student: "",
+    student_id: "",
   });
 
   const [stats, setStats] = useState({ groups: 0, teachers: 0, students: 0 });
@@ -785,6 +896,40 @@ export default function Guruhlar() {
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [assigningStudent, setAssigningStudent] = useState(false);
+
+  const handleAssignStudent = async () => {
+    if (!form.student_id) {
+      alert("Iltimos, talabani tanlang!");
+      return;
+    }
+    try {
+      setAssigningStudent(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/student-group", {
+        method: "POST",
+        headers: {
+          "accept": "*/*",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          student_id: Number(form.student_id),
+          group_id: 0
+        })
+      });
+      if (res.ok) {
+        alert("Talaba muvaffaqiyatli biriktirildi!");
+      } else {
+        alert("Xatolik yuz berdi");
+      }
+    } catch (err) {
+      alert("Server bilan bog'lanishda xatolik");
+    } finally {
+      setAssigningStudent(false);
+    }
+  };
 
   const filteredGroups = groups.filter(g => {
     const q = search.toLowerCase();
@@ -838,34 +983,35 @@ export default function Guruhlar() {
           roomsRes.json(),
         ]);
 
-        const groupsList = Array.isArray(groupsData) ? groupsData 
-          : Array.isArray(groupsData.data) ? groupsData.data 
-          : Array.isArray(groupsData.groups) ? groupsData.groups 
-          : [];
+        const groupsList = Array.isArray(groupsData) ? groupsData
+          : Array.isArray(groupsData.data) ? groupsData.data
+            : Array.isArray(groupsData.groups) ? groupsData.groups
+              : [];
         setGroups(groupsList);
 
-        const teachersList = Array.isArray(teachersData) ? teachersData 
-          : Array.isArray(teachersData.data) ? teachersData.data 
-          : Array.isArray(teachersData.teachers) ? teachersData.teachers 
-          : [];
+        const teachersList = Array.isArray(teachersData) ? teachersData
+          : Array.isArray(teachersData.data) ? teachersData.data
+            : Array.isArray(teachersData.teachers) ? teachersData.teachers
+              : [];
         setTeachers(teachersList);
 
-        const coursesList = Array.isArray(coursesData) ? coursesData 
-          : Array.isArray(coursesData.data) ? coursesData.data 
-          : Array.isArray(coursesData.courses) ? coursesData.courses 
-          : [];
+        const coursesList = Array.isArray(coursesData) ? coursesData
+          : Array.isArray(coursesData.data) ? coursesData.data
+            : Array.isArray(coursesData.courses) ? coursesData.courses
+              : [];
         setCourses(coursesList);
 
-        const roomsList = Array.isArray(roomsData) ? roomsData 
-          : Array.isArray(roomsData.data) ? roomsData.data 
-          : Array.isArray(roomsData.rooms) ? roomsData.rooms 
-          : [];
+        const roomsList = Array.isArray(roomsData) ? roomsData
+          : Array.isArray(roomsData.data) ? roomsData.data
+            : Array.isArray(roomsData.rooms) ? roomsData.rooms
+              : [];
         setRooms(roomsList);
 
-        const studentsList = Array.isArray(studentsData) ? studentsData 
-          : Array.isArray(studentsData.data) ? studentsData.data 
-          : Array.isArray(studentsData.students) ? studentsData.students 
-          : [];
+        const studentsList = Array.isArray(studentsData) ? studentsData
+          : Array.isArray(studentsData.data) ? studentsData.data
+            : Array.isArray(studentsData.students) ? studentsData.students
+              : [];
+        setStudents(studentsList);
 
         setStats({
           groups: groupsList.length,
@@ -1036,79 +1182,79 @@ export default function Guruhlar() {
             <tbody className="divide-y divide-gray-50">
               {currentGroups.map(g => (
                 <React.Fragment key={g.id}>
-                <tr
-                  onClick={() => setExpandedRowId(expandedRowId === g.id ? null : g.id)}
-                  className={`group transition-colors cursor-pointer ${expandedRowId === g.id ? "bg-slate-50/80" : "hover:bg-slate-50/50"}`}
-                >
-                  <td className="py-5 px-6">
-                    <div className="flex items-center gap-3">
-                      <div
-                        onClick={(e) => { e.stopPropagation(); toggleActive(g.id); }}
-                        className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${g.isActive ?? g.status === "ACTIVE" ? "bg-indigo-600" : "bg-gray-200"}`}
-                      >
-                        <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${g.isActive ?? g.status === "ACTIVE" ? "translate-x-4" : ""}`} />
-                      </div>
-                      <span className={`text-[10px] font-bold tracking-tight ${g.status === "ACTIVE" ? "text-green-500" : "text-slate-400"}`}>
-                        {g.status || "ACTIVE"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-5 px-6 font-bold text-slate-800 text-sm">{g.name}</td>
-                  <td className="py-5 px-6">
-                    <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold border border-purple-100 text-purple-400">
-                      {g.courses?.name || "—"}
-                    </span>
-                  </td>
-                  <td className="py-5 px-6">
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-xs font-bold text-slate-700">{g.courses.duration_month || "—"} oy</span>
-                      <span className="text-[10px] text-slate-400 font-medium mt-1">
-                        {g.start_date?.slice(0, 10) || "—"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-5 px-6">
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-xs font-bold text-slate-700">{g.start_time || "—"}</span>
-                      <span className="text-[10px] text-slate-400 font-medium mt-1">{g.week_day?.join(", ") || g.days || g.lessonDays || "—"}</span>
-                    </div>
-                  </td>
-                  <td className="py-5 px-6 text-xs text-slate-500 font-medium">
-                    {g.rooms?.name || "—"}
-                  </td>
-                  <td className="py-5 px-6">
-                    <div className="flex items-center gap-2">
-                      {(g.mentor || g.teacher) && (
-                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-[10px] font-bold border border-gray-200">
-                          {(g.teachers?.first_name + " " + g.teachers?.last_name || g.mentor || g.teacher || "").charAt(0).toUpperCase()}
+                  <tr
+                    onClick={() => navigate(`/guruhlar/${g.id}`)}
+                    className={`group transition-colors cursor-pointer hover:bg-slate-50/50`}
+                  >
+                    <td className="py-5 px-6">
+                      <div className="flex items-center gap-3">
+                        <div
+                          onClick={(e) => { e.stopPropagation(); toggleActive(g.id); }}
+                          className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${g.isActive ?? g.status === "ACTIVE" ? "bg-indigo-600" : "bg-gray-200"}`}
+                        >
+                          <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${g.isActive ?? g.status === "ACTIVE" ? "translate-x-4" : ""}`} />
                         </div>
-                      )}
-                      <span className="text-xs font-medium text-slate-700">
-                        {g.teachers?.first_name + " " + g.teachers?.last_name || g.mentor || g.teacher || "O'qituvchi yo'q"}
+                        <span className={`text-[10px] font-bold tracking-tight ${g.status === "ACTIVE" ? "text-green-500" : "text-slate-400"}`}>
+                          {g.status || "ACTIVE"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6 font-bold text-slate-800 text-sm">{g.name}</td>
+                    <td className="py-5 px-6">
+                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold border border-purple-100 text-purple-400">
+                        {g.courses?.name || "—"}
                       </span>
-                    </div>
-                  </td>
-                  <td className="py-5 px-6 text-sm font-bold text-slate-800">
-                    {g.students || g.studentCount || g.students_count || 0}
-                  </td>
-                  <td className="py-5 px-6 text-right pr-6" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setExpandedRowId(expandedRowId === g.id ? null : g.id); }}
-                      className="text-slate-300 hover:text-slate-600 transition-colors"
-                    >
-                      <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
-                    </button>
-                  </td>
-                </tr>
-                
-                {/* Accordion Row */}
-                {expandedRowId === g.id && (
-                  <tr>
-                    <td colSpan="9" className="p-0 border-b border-gray-100 bg-slate-50/30">
-                      <ExpandedContent g={g} onClose={() => setExpandedRowId(null)} />
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-xs font-bold text-slate-700">{g.courses.duration_month || "—"} oy</span>
+                        <span className="text-[10px] text-slate-400 font-medium mt-1">
+                          {g.start_date?.slice(0, 10) || "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-xs font-bold text-slate-700">{g.start_time || "—"}</span>
+                        <span className="text-[10px] text-slate-400 font-medium mt-1">{g.week_day?.join(", ") || g.days || g.lessonDays || "—"}</span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6 text-xs text-slate-500 font-medium">
+                      {g.rooms?.name || "—"}
+                    </td>
+                    <td className="py-5 px-6">
+                      <div className="flex items-center gap-2">
+                        {(g.mentor || g.teacher) && (
+                          <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-[10px] font-bold border border-gray-200">
+                            {(g.teachers?.first_name + " " + g.teachers?.last_name || g.mentor || g.teacher || "").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs font-medium text-slate-700">
+                          {g.teachers?.first_name + " " + g.teachers?.last_name || g.mentor || g.teacher || "O'qituvchi yo'q"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6 text-sm font-bold text-slate-800">
+                      {Array.isArray(g.students) ? g.students.length : (g.students || g.studentCount || g.students_count || 0)}
+                    </td>
+                    <td className="py-5 px-6 text-right pr-6" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpandedRowId(expandedRowId === g.id ? null : g.id); }}
+                        className="text-slate-300 hover:text-slate-600 transition-colors"
+                      >
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
+                      </button>
                     </td>
                   </tr>
-                )}
+
+                  {/* Accordion Row */}
+                  {expandedRowId === g.id && (
+                    <tr>
+                      <td colSpan="9" className="p-0 border-b border-gray-100 bg-slate-50/30">
+                        <ExpandedContent g={g} onClose={() => setExpandedRowId(null)} />
+                      </td>
+                    </tr>
+                  )}
                 </React.Fragment>
               ))}
             </tbody>
@@ -1122,7 +1268,7 @@ export default function Guruhlar() {
               disabled={currentPage === 1}
               className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
               Previous
             </button>
             <div className="flex items-center gap-1">
@@ -1130,11 +1276,10 @@ export default function Guruhlar() {
                 <button
                   key={p}
                   onClick={() => setCurrentPage(p)}
-                  className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${
-                    currentPage === p 
-                      ? "bg-indigo-50 text-indigo-600" 
-                      : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
-                  }`}
+                  className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${currentPage === p
+                    ? "bg-indigo-50 text-indigo-600"
+                    : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
+                    }`}
                 >
                   {p}
                 </button>
@@ -1146,7 +1291,7 @@ export default function Guruhlar() {
               className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
-              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           </div>
         )}
@@ -1158,6 +1303,7 @@ export default function Guruhlar() {
           title="Guruh qo'shish"
           subtitle="Yangi guruh yaratish uchun quyidagi ma'lumotlarni kiriting."
           onClose={() => setShowAdd(false)}
+          position="right"
           footer={
             <>
               <button onClick={() => setShowAdd(false)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
@@ -1170,6 +1316,31 @@ export default function Guruhlar() {
           }
         >
           <div className="space-y-4">
+            {/* Talaba biriktirish qismi */}
+            <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 mb-4 space-y-3">
+              <label className="block text-sm font-bold text-indigo-900">Talaba biriktirish</label>
+              <select
+                className="w-full border border-indigo-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition-all bg-white"
+                value={form.student_id}
+                onChange={e => setForm(f => ({ ...f, student_id: e.target.value }))}
+              >
+                <option value="">Talabani tanlang</option>
+                {students.map(student => (
+                  <option key={student.id} value={student.id}>
+                    {student.first_name} {student.last_name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleAssignStudent}
+                disabled={assigningStudent}
+                className="w-full py-2.5 rounded-xl bg-indigo-100 text-indigo-700 text-sm font-bold hover:bg-indigo-200 transition-colors disabled:opacity-60"
+              >
+                {assigningStudent ? "Biriktirilmoqda..." : "Talaba biriktirish"}
+              </button>
+            </div>
+
             {/* Guruh nomi */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Guruh nomi <span className="text-red-500">*</span></label>
@@ -1309,3 +1480,4 @@ export default function Guruhlar() {
     </div>
   );
 }
+

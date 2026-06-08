@@ -1,206 +1,366 @@
-import { useState } from "react";
-import Modal from "../components/Modal";
+import { useState, useEffect } from 'react';
 
-const INITIAL_ROOMS = [
-  { id: 1, name: "genious room",        sigim: 15 },
-  { id: 2, name: "Impact room",         sigim: 12 },
-  { id: 3, name: "1A",                  sigim: 25 },
-  { id: 4, name: "205-xona",            sigim: 32 },
-  { id: 5, name: "16-xona",             sigim: 18 },
-  { id: 6, name: "5 xona",              sigim: 30 },
-  { id: 7, name: "IELTS with islombok", sigim: 20 },
-  { id: 8, name: "Beginner",            sigim: 18 },
-  { id: 9, name: "99",                  sigim: 25 },
-];
+/* ───────── Common Drawer Shell ───────── */
+function DrawerShell({ title, subtitle, onClose, onSave, children }) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 bottom-0 w-[420px] bg-white shadow-2xl z-50 flex flex-col border-l border-gray-100 animate-in slide-in-from-right duration-300">
+        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+            {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors mt-1">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 px-8 py-4 space-y-6 overflow-y-auto custom-scrollbar">
+          {children}
+        </div>
+        <div className="px-8 py-6 border-t border-gray-50 flex gap-3 justify-end bg-gray-50/30">
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">
+            Bekor qilish
+          </button>
+          <button onClick={onSave} className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] text-white text-sm font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95">
+            Saqlash
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
-const TABS = ["Kurslar", "Xonalar", "Filiallar", "Hodimlar"];
+/* ───────── Room Drawer ───────── */
+function RoomDrawer({ room, onClose, onSave }) {
+  const [name, setName] = useState(room?.name || "");
 
-export default function Xonalar() {
-  const [rooms, setRooms]           = useState(INITIAL_ROOMS);
-  const [activeTab, setActiveTab]   = useState("Xonalar");
-  const [showModal, setShowModal]   = useState(false);
-  const [editRoom, setEditRoom]     = useState(null);
-  const [form, setForm]             = useState({ name: "", sigim: "" });
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-
-  const openAdd = () => {
-    setEditRoom(null);
-    setForm({ name: "", sigim: "" });
-    setShowModal(true);
-  };
-
-  const openEdit = (room) => {
-    setEditRoom(room);
-    setForm({ name: room.name, sigim: String(room.sigim) });
-    setShowModal(true);
-  };
-
-  const handleSave = () => {
-    if (!form.name.trim() || !form.sigim) return;
-    if (editRoom) {
-      setRooms(r => r.map(x => x.id === editRoom.id ? { ...x, name: form.name, sigim: Number(form.sigim) } : x));
-    } else {
-      setRooms(r => [...r, { id: Date.now(), name: form.name, sigim: Number(form.sigim) }]);
-    }
-    setShowModal(false);
-  };
-
-  const handleDelete = (id) => {
-    setRooms(r => r.filter(x => x.id !== id));
-    setDeleteConfirm(null);
+  const handle = () => {
+    if (!name.trim()) return;
+    onSave({ name: name.trim() });
   };
 
   return (
-    <div>
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Boshqarish</h1>
-        </div>
-        <button className="flex items-center gap-2 text-sm font-semibold text-slate-600 border border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50 transition-colors">
-          Menu ▾
-        </button>
+    <DrawerShell title={room ? "Xonani tahrirlash" : "Xonani qo'shish"} onClose={onClose} onSave={handle}>
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
+        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Xona nomi" value={name} onChange={e => setName(e.target.value)} />
       </div>
+    </DrawerShell>
+  );
+}
 
-      {/* Tabs */}
-      <div className="flex gap-6 border-b border-gray-200 mb-6">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`pb-3 text-sm font-semibold transition-colors relative ${
-              activeTab === tab ? "text-indigo-600" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {tab}
-            {activeTab === tab && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full"/>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <h2 className="font-bold text-slate-800 text-base">Xonalar</h2>
-            <button className="text-indigo-500 hover:text-indigo-700 transition-colors">
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M21 12a9 9 0 0 0-9-9 9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9z"/>
-                <path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
-              </svg>
-            </button>
+/* ───────── Helpers ───────── */
+function DeleteConfirm({ onClose, onConfirm }) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
+          <h3 className="font-bold text-slate-900 text-lg mb-2">O'chirishni tasdiqlaysizmi?</h3>
+          <p className="text-sm text-slate-500 mb-6">Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.</p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">Yo'q</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">Ha, o'chirilsin</button>
           </div>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-200 transition-all active:scale-95"
-          >
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ───────── Xonalar Tab ───────── */
+export default function Rooms() {
+  const [rooms, setRooms] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [drawer, setDrawer] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+  const [forceRefresh, setForceRefresh] = useState(0);
+
+  // Arxiv (inactive) rooms
+  const [arxivOpen, setArxivOpen] = useState(false);
+  const [arxivRooms, setArxivRooms] = useState([]);
+  const [arxivLoading, setArxivLoading] = useState(false);
+
+  const fetchArxiv = async () => {
+    setArxivLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/rooms/InactiveRooms", {
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setArxivRooms(Array.isArray(data) ? data : data.data || []);
+    } catch {
+      setArxivRooms([]);
+    } finally {
+      setArxivLoading(false);
+    }
+  };
+
+  const openArxiv = () => {
+    setArxivOpen(true);
+    fetchArxiv();
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/rooms/${id}`, {
+        method: "PUT",
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Aktivlashtirishda xatolik");
+        return;
+      }
+      setArxivRooms(prev => prev.filter(r => r.id !== id));
+      setForceRefresh(r => r + 1);
+    } catch {
+      alert("Server bilan bog'lanishda xatolik");
+    }
+  };
+
+  // ✅ Backend dan xonalarni olish
+  useEffect(() => {
+    const fetchRooms = async () => {
+      // fetchRooms(); ← bu qatorni O'CHIRING
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/v1/rooms", {
+          headers: {
+            "accept": "*/*",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        const list = Array.isArray(data) ? data
+          : Array.isArray(data.data) ? data.data
+            : Array.isArray(data.rooms) ? data.rooms
+              : [];
+        setRooms(list);
+      } catch (err) {
+        setError("Xonalarni yuklashda xatolik");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRooms(); // ← faqat shu qolsin
+  }, [forceRefresh]);
+
+  const handleSave = async ({ name }) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (drawer === "add") {
+        // ✅ POST
+        const res = await fetch("/api/v1/rooms", {
+          method: "POST",
+          headers: {
+            "accept": "*/*",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name }),
+        });
+
+        const data = await res.json();
+        console.log("Room POST:", data);
+
+        if (!res.ok) {
+          alert(data.message || "Xatolik yuz berdi");
+          return;
+        }
+
+      } else {
+        // ✅ PATCH
+        const res = await fetch(`/api/v1/rooms/update/${drawer.id}`, {
+          method: "PATCH",
+          headers: {
+            "accept": "*/*",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Xatolik yuz berdi");
+          return;
+        }
+      }
+
+      setDrawer(null);
+      setForceRefresh(r => r + 1); // ✅ ro'yxatni yangilash
+
+    } catch (err) {
+      alert("Server bilan bog'lanishda xatolik");
+    }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Yuklanmoqda...</div>;
+  if (error) return <div className="flex items-center justify-center h-40 text-red-400 text-sm">{error}</div>;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-bold text-slate-800 text-base">Xonalar ro'yxati</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-slate-700 text-sm font-semibold rounded-xl transition-all">
+            Arxiv <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+          </button>
+          <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
             + Xonani qo'shish
           </button>
         </div>
-
-        {/* Rooms grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {rooms.map(room => (
-            <div key={room.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all group">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{room.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5">Sig'im: {room.sigim}</p>
-              </div>
-              <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => setDeleteConfirm(room.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors"
-                >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
-                  </svg>
-                </button>
-                <button
-                  onClick={() => openEdit(room)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-400 hover:text-orange-600 transition-colors"
-                >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {rooms.length === 0 && (
-          <div className="py-16 text-center text-slate-400">
-            <p className="text-4xl mb-3">🚪</p>
-            <p className="text-sm">Hozircha xona qo'shilmagan</p>
-          </div>
-        )}
       </div>
-
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <Modal
-          title={editRoom ? "Xonani tahrirlash" : "Xonani qo'shish"}
-          onClose={() => setShowModal(false)}
-          footer={
-            <>
-              <button onClick={() => setShowModal(false)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
-                Bekor qilish
-              </button>
-              <button onClick={handleSave} className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition-all active:scale-95">
-                Saqlash
-              </button>
-            </>
-          }
-        >
-          <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {rooms.slice((currentPage - 1) * 12, currentPage * 12).map(room => (
+          <div key={room.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/20 transition-all group">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Nomi <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-                placeholder="Xona nomi"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              />
+              <p className="text-sm font-semibold text-slate-800">{room.name}</p>
+              <p className="text-xs text-slate-500 mt-0.5">Qoshildi: {room.created_at?.slice(0, 10) ?? "—"}</p>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Sig'imi <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-                placeholder="Masalan: 20"
-                type="number"
-                value={form.sigim}
-                onChange={e => setForm(f => ({ ...f, sigim: e.target.value }))}
-              />
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => setDeleteId(room.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+              </button>
+              <button onClick={() => setDrawer(room)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-500 transition-colors">
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg>
+              </button>
             </div>
           </div>
-        </Modal>
+        ))}
+      </div>
+      
+      {Math.ceil(rooms.length / 12) > 1 && (
+        <div className="flex items-center justify-between w-full mt-6 px-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            Previous
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.ceil(rooms.length / 12) }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setCurrentPage(p)}
+                className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${
+                  currentPage === p 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(rooms.length / 12), p + 1))}
+            disabled={currentPage === Math.ceil(rooms.length / 12)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
       )}
 
-      {/* Delete confirm */}
-      {deleteConfirm && (
-        <Modal
-          title="Xonani o'chirish"
-          onClose={() => setDeleteConfirm(null)}
-          footer={
-            <>
-              <button onClick={() => setDeleteConfirm(null)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
-                Bekor qilish
+      {drawer && <RoomDrawer room={drawer === "add" ? null : drawer} onClose={() => setDrawer(null)} onSave={handleSave} />}
+      {deleteId && (
+        <DeleteConfirm 
+          onClose={() => setDeleteId(null)} 
+          onConfirm={async () => {
+            try {
+              const token = localStorage.getItem("token");
+              const res = await fetch(`/api/v1/rooms/${deleteId}`, {
+                method: "DELETE",
+                headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+              });
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.message || "O'chirishda xatolik");
+                return;
+              }
+              setRooms(r => r.filter(x => x.id !== deleteId));
+              setDeleteId(null);
+            } catch {
+              alert("O'chirishda xatolik");
+            }
+          }} 
+        />
+      )}
+
+      {/* Arxiv Modal */}
+      {arxivOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => setArxivOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] max-w-[95vw] max-h-[80vh] bg-white rounded-3xl shadow-2xl z-[70] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv xonalar</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) xonalar ro'yxati</p>
+                </div>
+              </div>
+              <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-all active:scale-95">
-                O'chirish
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-8 py-4">
+              {arxivLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+              ) : arxivRooms.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                  <p className="text-sm">Arxiv bo'sh</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {arxivRooms.map(r => (
+                    <div key={r.id} className="p-4 rounded-2xl border border-gray-100 bg-slate-50/40 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-2">
+                          <svg width="17" height="17" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm">{r.name}</h3>
+                      </div>
+                      <button
+                        onClick={() => handleActivate(r.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-bold transition-all active:scale-95 shrink-0"
+                      >
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                        Aktivlashtirish
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
+                Yopish
               </button>
-            </>
-          }
-        >
-          <p className="text-slate-600 text-sm">Haqiqatan ham bu xonani o'chirmoqchimisiz?</p>
-        </Modal>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

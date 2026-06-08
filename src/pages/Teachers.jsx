@@ -192,40 +192,145 @@ function AddTeacherDrawer({ onClose, onSave, teacher }) {
               >
                 + Qo'shish
               </button>
-              {showGroupSelector && (
-                <div className="border border-gray-200 rounded-xl p-3 bg-slate-50/50 max-h-64 overflow-y-auto">
-                  {groupsLoading ? (
-                    <p className="text-xs text-slate-400 text-center py-3">Yuklanmoqda...</p>
-                  ) : groups.length > 0 ? (
-                    <div className="space-y-2">
-                      {groups.map(g => (
-                        <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={selectedGroups.includes(g.id)}
-                            onChange={() => {
-                              if (selectedGroups.includes(g.id)) {
-                                setSelectedGroups(selectedGroups.filter(id => id !== g.id));
-                              } else {
-                                setSelectedGroups([...selectedGroups, g.id]);
-                              }
-                            }}
-                            className="accent-indigo-600 w-4 h-4"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-slate-800">{g.name}</p>
-                            <p className="text-[11px] text-slate-400">{g.courses?.name || g.course_name || "—"}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400 text-center py-3">Guruhlar mavjud emas</p>
-                  )}
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Left-side Group Selector Modal */}
+          {showGroupSelector && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/20 z-[75]"
+                onClick={() => setShowGroupSelector(false)}
+                style={{ pointerEvents: "auto" }}
+              />
+              <div
+                className="fixed top-0 bottom-0 z-[80] flex flex-col bg-white shadow-2xl border-r border-gray-100"
+                style={{
+                  width: "360px",
+                  right: "440px",
+                  animation: "slideInFromLeft 0.25s ease-out",
+                }}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-white">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900">Guruhlar</h3>
+                      <p className="text-[11px] text-slate-400">Guruhni tanlang</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowGroupSelector(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Guruh qidirish..."
+                      className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 transition-all bg-slate-50/50"
+                      onChange={(e) => {
+                        const q = e.target.value.toLowerCase();
+                        const filtered = document.querySelectorAll("[data-group-item]");
+                        filtered.forEach(el => {
+                          const name = el.getAttribute("data-group-name")?.toLowerCase() || "";
+                          el.style.display = name.includes(q) ? "" : "none";
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Selected count badge */}
+                {selectedGroups.length > 0 && (
+                  <div className="px-4 py-2 bg-indigo-50/50 border-b border-indigo-100/50">
+                    <span className="text-xs font-bold text-indigo-600">{selectedGroups.length} ta guruh tanlangan</span>
+                  </div>
+                )}
+
+                {/* Groups List */}
+                <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
+                  {groupsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                      <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                      <p className="text-xs">Yuklanmoqda...</p>
+                    </div>
+                  ) : groups.length > 0 ? (
+                    <div className="space-y-1">
+                      {groups.map(g => {
+                        const isSelected = selectedGroups.includes(g.id);
+                        return (
+                          <label
+                            key={g.id}
+                            data-group-item
+                            data-group-name={g.name}
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all ${
+                              isSelected
+                                ? "bg-indigo-50 border border-indigo-200 shadow-sm"
+                                : "hover:bg-slate-50 border border-transparent"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setSelectedGroups(selectedGroups.filter(id => id !== g.id));
+                                } else {
+                                  setSelectedGroups([...selectedGroups, g.id]);
+                                }
+                              }}
+                              className="accent-indigo-600 w-4 h-4 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-bold ${isSelected ? "text-indigo-700" : "text-slate-800"}`}>{g.name}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{g.courses?.name || g.course_name || "—"}</p>
+                            </div>
+                            {isSelected && (
+                              <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                      <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                      <p className="text-sm">Guruhlar mavjud emas</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30">
+                  <button
+                    onClick={() => setShowGroupSelector(false)}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
+                  >
+                    Tasdiqlash ({selectedGroups.length})
+                  </button>
+                </div>
+              </div>
+
+              <style>{`
+                @keyframes slideInFromLeft {
+                  from { transform: translateX(-100%); opacity: 0; }
+                  to { transform: translateX(0); opacity: 1; }
+                }
+              `}</style>
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-bold text-slate-800 mb-2">Rasm <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
@@ -308,9 +413,9 @@ export default function Teachers() {
       const data = await res.json();
       const list = Array.isArray(data) ? data
         : Array.isArray(data.data) ? data.data
-        : Array.isArray(data.teachers) ? data.teachers
-        : Array.isArray(data.items) ? data.items
-        : [];
+          : Array.isArray(data.teachers) ? data.teachers
+            : Array.isArray(data.items) ? data.items
+              : [];
       setArxivTeachers(list);
     } catch {
       setArxivTeachers([]);
@@ -357,8 +462,6 @@ export default function Teachers() {
           },
         });
         const data = await res.json();
-        console.log("Teachers:", data);
-
         const list = Array.isArray(data) ? data
           : Array.isArray(data.data) ? data.data
             : Array.isArray(data.teachers) ? data.teachers

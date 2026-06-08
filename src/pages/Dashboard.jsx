@@ -116,7 +116,7 @@ export default function Dashboard({ user }) {
     <div className="pb-10">
       {/* Welcome */}
       <div className="mb-8">
-        <h1 className="text-2xl font-extrabold text-slate-900">Salom, {user.fullName} 👋</h1>
+        <h1 className="text-2xl font-extrabold text-slate-900">Salom, {user.first_name} 👋</h1>
         <p className="text-slate-500 text-sm mt-1">Study platformasiga xush kelibsiz!</p>
       </div>
 

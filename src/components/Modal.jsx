@@ -1,11 +1,23 @@
-export default function Modal({ title, subtitle, onClose, children, footer }) {
+export default function Modal({ title, subtitle, onClose, children, footer, position = "center" }) {
+  const positionClasses = {
+    right: "justify-end",
+    left: "justify-start",
+    center: "items-center justify-center"
+  };
+
+  const panelClasses = {
+    right: "w-full max-w-md h-full animate-in slide-in-from-right duration-300",
+    left: "w-full max-w-md h-full animate-in slide-in-from-left duration-300",
+    center: "w-full max-w-md mx-4 rounded-2xl max-h-[90vh]"
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className={`fixed inset-0 z-50 flex ${positionClasses[position]}`}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]">
+      <div className={`relative bg-white shadow-2xl flex flex-col ${panelClasses[position]}`}>
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div>

@@ -1,278 +1,471 @@
-import { useState, useEffect  } from "react";
-import Modal from "../components/Modal";
+import { useState, useEffect } from 'react';
 
-const COLORS = ["#1e3a5f", "#7c3aed", "#dc2626", "#c2410c", "#15803d", "#0369a1", "#1d4ed8", "#6d28d9", "#be185d"];
+/* ───────── Common Drawer Shell ───────── */
+function DrawerShell({ title, subtitle, onClose, onSave, children }) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 bottom-0 w-[420px] bg-white shadow-2xl z-50 flex flex-col border-l border-gray-100 animate-in slide-in-from-right duration-300">
+        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+            {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors mt-1">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 px-8 py-4 space-y-6 overflow-y-auto custom-scrollbar">
+          {children}
+        </div>
+        <div className="px-8 py-6 border-t border-gray-50 flex gap-3 justify-end bg-gray-50/30">
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">
+            Bekor qilish
+          </button>
+          <button onClick={onSave} className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] text-white text-sm font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95">
+            Saqlash
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
-const DURATIONS = ["1 oy", "2 oy", "3 oy", "4 oy", "6 oy", "8 oy", "12 oy", "18 oy"];
-const LESSON_DURATIONS = ["30 daqiqa", "45 daqiqa", "60 daqiqa", "90 daqiqa", "120 daqiqa"];
+/* ───────── Course Drawer ───────── */
+function CourseDrawer({ course, onClose, onSave }) {
+  const [name, setName] = useState(course?.name || "");
+  const [filiallar, setFiliallar] = useState(course?.filiallar || ["Filial 1"]);
+  const [duration_hours, setDurationHours] = useState(course?.duration_hours || "");
+  const [duration_month, setDurationMonth] = useState(course?.duration_month || "");
+  const [price, setPrice] = useState(course?.price || "");
+  const [description, setDescription] = useState(course?.description || "");
+  const [level, setLevel] = useState(course?.level || "beginner");
+
+  const handle = () => {
+    if (!name.trim() || !price) return;
+    onSave({
+      name: name.trim(),
+      description: description,
+      price: price,
+      duration_month: duration_month,
+      duration_hours: duration_hours,
+      level: level,
+      filiallar,
+    });
+  };
+
+  const toggleFilial = (f) => {
+    setFiliallar(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+  };
+
+  return (
+    <DrawerShell
+      title={course ? "Kursni tahrirlash" : "Kurs qoshish"}
+      subtitle={course ? "Kurs ma'lumotlarini o'zgartiring" : "Bu yerda siz yangi Kurs qo'shishingiz mumkin."}
+      onClose={onClose}
+      onSave={handle}
+    >
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
+        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all" placeholder="Kurs nomi..." value={name} onChange={e => setName(e.target.value)} />
+      </div>
+
+      {/* <div> */}
+        {/* <div className="flex items-center justify-between mb-3">
+          <label className="text-sm font-bold text-slate-800">Kurs mavjud bo'ladigon filiallar</label>
+          <button onClick={() => setFiliallar(["Filial 1", "Filial 2"])} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">Hammasini tanlash</button>
+        </div> */}
+        {/* <div className="space-y-3">
+          {["Filial 1", "Filial 2"].map(f => (
+            <label key={f} className="flex items-center gap-3 cursor-pointer group">
+              <div onClick={() => toggleFilial(f)} className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${filiallar.includes(f) ? "bg-indigo-600 border-indigo-600" : "border-gray-300 group-hover:border-indigo-400"}`}>
+                {filiallar.includes(f) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12" /></svg>}
+              </div>
+              <span className="text-sm font-medium text-slate-700">{f}</span>
+            </label>
+          ))}
+        </div> */}
+      {/* </div> */}
+
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Dars davomiyligi (soatda)</label>
+        <input
+          type="number"
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+          placeholder="Masalan: 2"
+          value={duration_hours}
+          onChange={e => setDurationHours(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Kurs davomiyligi (oyda)</label>
+        <input
+          type="number"
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+          placeholder="Masalan: 6"
+          value={duration_month}
+          onChange={e => setDurationMonth(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Narx</label>
+        <div className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2" /><circle cx="12" cy="12" r="3" /></svg></div>
+          <input type="number" className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Narxini kiriting" value={price} onChange={e => setPrice(e.target.value)} />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Daraja (Level)</label>
+        <div className="relative">
+          <select
+            className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 bg-white cursor-pointer"
+            value={level}
+            onChange={e => setLevel(e.target.value)}
+          >
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">Description</label>
+        <textarea className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 h-28 resize-none transition-all" placeholder="Kurs haqida qisqacha ma'lumot..." value={description} onChange={e => setDescription(e.target.value)} />
+        <p className="text-[11px] text-slate-400 mt-1.5">Bu kurs haqida qo'shimcha ma'lumot.</p>
+      </div>
 
 
-const FILIALS = ["Filial 1", "Filial 2", "Filial 3"];
+    </DrawerShell>
+  );
+}
 
-export default function Kurslar() {
-  const [courses, setCourses]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editCourse, setEditCourse] = useState(null);
-  const [deleteId, setDeleteId]   = useState(null);
-  const [form, setForm] = useState({
-    name: "", filials: [], lessonDur: "", courseDur: "", narx: "", desc: "", color: COLORS[0],
-  });
+/* ───────── Helpers ───────── */
+function DeleteConfirm({ onClose, onConfirm }) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
+          <h3 className="font-bold text-slate-900 text-lg mb-2">O'chirishni tasdiqlaysizmi?</h3>
+          <p className="text-sm text-slate-500 mb-6">Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.</p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">Yo'q</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">Ha, o'chirilsin</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ───────── Kurslar Tab ───────── */
+export default function Courses() {
+  const [courses, setCourses] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [drawer, setDrawer] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+
+  // Arxiv (inactive) courses
+  const [arxivOpen, setArxivOpen] = useState(false);
+  const [arxivCourses, setArxivCourses] = useState([]);
+  const [arxivLoading, setArxivLoading] = useState(false);
+
+  const fetchArxiv = async () => {
+    setArxivLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/courses/inactive", {
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setArxivCourses(Array.isArray(data) ? data : data.data || []);
+    } catch {
+      setArxivCourses([]);
+    } finally {
+      setArxivLoading(false);
+    }
+  };
+
+  const openArxiv = () => {
+    setArxivOpen(true);
+    fetchArxiv();
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/courses/activate?id=${id}`, {
+        method: "PUT",
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Aktivlashtirishda xatolik");
+        return;
+      }
+      setArxivCourses(prev => prev.filter(c => c.id !== id));
+      fetchCourses();
+    } catch {
+      alert("Server bilan bog'lanishda xatolik");
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/courses", {
+        headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setCourses(Array.isArray(data) ? data : data.data || []);
+    } catch (err) {
+      setError("Kurslarni yuklashda xatolik");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch("/api/courses", {
-          headers: {
-            "accept": "*/*",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        console.log("Courses:", data);
-        setCourses(data);
-      } catch (err) {
-        setError("Kurslarni yuklashda xatolik");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCourses();
   }, []);
 
-  // const openAdd = () => {  };
-  // const openEdit = (c) => { };
-  // const toggleFilial = (f) => {  };
-  // const handleSave = () => {  };
+  const handleSave = async (formData) => {
+    try {
+      const token = localStorage.getItem("token");
 
-  // ✅ if(loading) va if(error) — funksiyalardan KEYIN, return dan OLDIN
-  if (loading) return <div className="flex items-center justify-center h-40 text-slate-400">Yuklanmoqda...</div>;
-  if (error)   return <div className="flex items-center justify-center h-40 text-red-400">{error}</div>;
+      if (drawer === "add") {
+        const res = await fetch("/api/v1/courses", {
+          method: "POST",
+          headers: {
+            "accept": "*/*",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            description: formData.description || "",
+            price: Number(formData.price) || 0,
+            duration_month: Number(formData.duration_month) || 0,
+            duration_hours: Number(formData.duration_hours) || 0,
+            level: formData.level || "beginner",
+          }),
+        });
 
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Xatolik yuz berdi");
+          return;
+        }
+
+        await fetchCourses(); // backend {success, message} qaytargani uchun qayta fetch
+
+      } else {
+        const res = await fetch(`/api/v1/courses/update?id=${drawer.id}`, {
+          method: "PUT",
+          headers: {
+            "accept": "*/*",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            description: formData.description || "",
+            price: Number(formData.price) || 0,
+            duration_month: Number(formData.duration_month) || 0,
+            duration_hours: Number(formData.duration_hours) || 0,
+            level: formData.level || "beginner",
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Xatolik yuz berdi");
+          return;
+        }
+
+        await fetchCourses(); // yangilangandan keyin ham qayta fetch
+      }
+
+      setDrawer(null);
+    } catch (err) {
+      console.error("Saqlashda xatolik:", err);
+      alert("Server bilan bog'lanishda xatolik");
+    }
+  };
+
+
+  if (loading) return <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Yuklanmoqda...</div>;
+  if (error) return <div className="flex items-center justify-center h-40 text-red-400 text-sm">{error}</div>;
 
   return (
-    <div>
-      {/* Header */}
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Kurslar</h1>
-          <p className="text-slate-500 text-sm mt-1">Barcha kurslarni boshqaring</p>
+        <h2 className="font-bold text-slate-800 text-base">Kurslar ro'yxati</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-slate-700 text-sm font-semibold rounded-xl transition-all">
+            Arxiv <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+          </button>
+          <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
+            + Kurs qo'shish
+          </button>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-200 transition-all active:scale-95"
-        >
-          + Kurs qo'shish
-        </button>
       </div>
-
-      {/* Courses grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {courses.map(c => (
-          <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
-            {/* Color band */}
-            <div className="h-2 w-full" style={{ background: c.color }} />
-            <div className="p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">{c.name}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{c.desc}</p>
-                </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => setDeleteId(c.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-400 transition-colors">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                  </button>
-                  <button onClick={() => openEdit(c)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-400 transition-colors">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {c.filial.map((f, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-xs font-medium">{f}</span>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full" style={{ background: c.color }} />
-                  <span className="text-xs text-slate-500">Rang</span>
-                </div>
-                <span className="text-sm font-bold text-slate-800">{c.narx.toLocaleString()} so'm</span>
-              </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {courses.slice((currentPage - 1) * 8, currentPage * 8).map(c => (
+          <div key={c.id} className="p-4 rounded-2xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/10 transition-all group relative">
+            <div className="mb-3 w-10 h-10 rounded-xl flex items-center justify-center" style={{ color: c.color || '#4F46E5', backgroundColor: (c.color || '#4F46E5') + '15' }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+            </div>
+            <h3 className="font-bold text-slate-800 mb-1">{c.name}</h3>
+            <p className="text-xs text-slate-400 font-medium mb-2">
+              Davomiyligi: {c.duration_month || "—"} oy
+            </p>
+            <p className="text-sm font-bold text-indigo-600">
+              {Number(c.price || c.narx || 0).toLocaleString()} so'm
+            </p>
+            <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => setDeleteId(c.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+              </button>
+              <button onClick={() => setDrawer(c)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-500 transition-colors">
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg>
+              </button>
             </div>
           </div>
         ))}
-
-        {/* Empty add card */}
-        <button
-          onClick={openAdd}
-          className="bg-white rounded-2xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center py-12 gap-2 group min-h-[160px]"
-        >
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center text-indigo-600 text-xl transition-colors">+</div>
-          <span className="text-sm font-semibold text-slate-500 group-hover:text-indigo-600 transition-colors">Yangi kurs qo'shish</span>
-        </button>
       </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <Modal
-          title={editCourse ? "Kursni tahrirlash" : "Kurs qoshish"}
-          subtitle="Bu yerda siz yangi kurs qo'shishingiz mumkin."
-          onClose={() => setShowModal(false)}
-          footer={
-            <>
-              <button onClick={() => setShowModal(false)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
-                Bekor qilish
-              </button>
-              <button onClick={handleSave} className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition-all active:scale-95">
-                Saqlash
-              </button>
-            </>
-          }
-        >
-          <div className="space-y-5">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nomi</label>
-              <input
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-                placeholder="HR Manager..."
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-
-            {/* Filials */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold text-slate-700">Kurs mavjud boledigon filiallar</label>
-                <button
-                  className="text-xs text-indigo-600 font-semibold hover:underline"
-                  onClick={() => setForm(f => ({ ...f, filials: FILIALS }))}
-                >
-                  Hammasini tanlash
-                </button>
-              </div>
-              <div className="space-y-2">
-                {FILIALS.map(fil => (
-                  <label key={fil} className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.filials.includes(fil)}
-                      onChange={() => toggleFilial(fil)}
-                      className="accent-indigo-600 w-4 h-4 rounded"
-                    />
-                    <span className="text-sm text-slate-700">{fil}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Lesson duration */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Dars davomiyligi</label>
-              <select
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
-                value={form.lessonDur}
-                onChange={e => setForm(f => ({ ...f, lessonDur: e.target.value }))}
+      {Math.ceil(courses.length / 8) > 1 && (
+        <div className="flex items-center justify-between w-full mt-6 px-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            Previous
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.ceil(courses.length / 8) }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setCurrentPage(p)}
+                className={`w-9 h-9 rounded-xl text-[13px] font-extrabold transition-all ${
+                  currentPage === p 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-slate-400 hover:bg-gray-50 hover:text-slate-600"
+                }`}
               >
-                <option value="">Tanlang</option>
-                {LESSON_DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-
-            {/* Course duration */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kurs davomiyligi (oylarda)</label>
-              <select
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all bg-white"
-                value={form.courseDur}
-                onChange={e => setForm(f => ({ ...f, courseDur: e.target.value }))}
-              >
-                <option value="">Tanlang</option>
-                {DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-
-            {/* Price */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Narx</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                </span>
-                <input
-                  className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-                  placeholder="Narxini kiriting"
-                  type="number"
-                  value={form.narx}
-                  onChange={e => setForm(f => ({ ...f, narx: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
-              <textarea
-                rows={4}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
-                placeholder="A little about the course..."
-                value={form.desc}
-                onChange={e => setForm(f => ({ ...f, desc: e.target.value }))}
-              />
-              <p className="text-xs text-slate-400 mt-1">This is a hint text to help user.</p>
-            </div>
-
-            {/* Color */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Rangi</label>
-              <p className="text-xs text-slate-400 mb-3">The color you choose will be displayed to users and in the list of roles.</p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {COLORS.map(col => (
-                  <button
-                    key={col}
-                    onClick={() => setForm(f => ({ ...f, color: col }))}
-                    className="w-8 h-8 rounded-full transition-all border-2"
-                    style={{
-                      background: col,
-                      borderColor: form.color === col ? "#fff" : col,
-                      outline: form.color === col ? `2px solid ${col}` : "none",
-                      outlineOffset: "2px",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+                {p}
+              </button>
+            ))}
           </div>
-        </Modal>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(courses.length / 8), p + 1))}
+            disabled={currentPage === Math.ceil(courses.length / 8)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
       )}
 
-      {/* Delete confirm */}
+      {drawer && <CourseDrawer course={drawer === "add" ? null : drawer} onClose={() => setDrawer(null)} onSave={handleSave} />}
+
       {deleteId && (
-        <Modal
-          title="Kursni o'chirish"
+        <DeleteConfirm
           onClose={() => setDeleteId(null)}
-          footer={
-            <>
-              <button onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-gray-100 transition-colors">
-                Bekor qilish
+          onConfirm={async () => {
+            try {
+              const token = localStorage.getItem("token");
+              await fetch(`/api/v1/courses/delete?id=${deleteId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` },
+              });
+              setCourses(c => c.filter(x => x.id !== deleteId));
+              setDeleteId(null);
+            } catch (err) {
+              alert("O'chirishda xatolik");
+            }
+          }}
+        />
+      )}
+
+      {/* Arxiv Modal */}
+      {arxivOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => setArxivOpen(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] max-w-[95vw] max-h-[80vh] bg-white rounded-3xl shadow-2xl z-[70] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv kurslar</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) kurslar ro'yxati</p>
+                </div>
+              </div>
+              <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
-              <button
-                onClick={() => { setCourses(c => c.filter(x => x.id !== deleteId)); setDeleteId(null); }}
-                className="px-5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-all active:scale-95"
-              >
-                O'chirish
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-8 py-4">
+              {arxivLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+              ) : arxivCourses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+                  <p className="text-sm">Arxiv bo'sh</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {arxivCourses.map(c => (
+                    <div key={c.id} className="p-4 rounded-2xl border border-gray-100 bg-slate-50/40 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-2">
+                          <svg width="17" height="17" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">Davomiyligi: {c.duration_month || "—"} oy</p>
+                        <p className="text-xs font-bold text-indigo-600 mt-1">{Number(c.price || 0).toLocaleString()} so'm</p>
+                      </div>
+                      <button
+                        onClick={() => handleActivate(c.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-bold transition-all active:scale-95 shrink-0"
+                      >
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                        Aktivlashtirish
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
+                Yopish
               </button>
-            </>
-          }
-        >
-          <p className="text-slate-600 text-sm">Haqiqatan ham bu kursni o'chirmoqchimisiz?</p>
-        </Modal>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

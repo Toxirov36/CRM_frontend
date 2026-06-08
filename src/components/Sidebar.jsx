@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const MENU_ITEMS = [
   {
@@ -50,8 +51,9 @@ const NAV = [
   },
 ];
 
-export default function Sidebar({ activePage, setActivePage, setActiveTab }) {
+export default function Sidebar({ activePage, setActivePage }) {
   const [showMenu, setShowMenu] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="w-56 bg-white border-r border-gray-100 flex flex-col h-full shadow-sm relative">
@@ -87,8 +89,7 @@ export default function Sidebar({ activePage, setActivePage, setActiveTab }) {
                     <button
                       key={m.label}
                       onClick={() => {
-                        setActivePage("boshqarish");
-                        setActiveTab(m.label);
+                        navigate(`/boshqarish/${m.tab}`);
                         setShowMenu(false);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left group"

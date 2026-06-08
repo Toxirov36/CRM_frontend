@@ -41,17 +41,21 @@ export default function Login({ onLogin }) {
         return;
       }
 
-      localStorage.setItem("token", data.accessToken);
-
       const base64 = data.accessToken.split('.')[1];
-      const decoded = JSON.parse(atob(base64));
+      const base64Fixed = base64.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = JSON.parse(atob(base64Fixed));
 
-
-      onLogin({
+      const userData = {
         ...decoded,
         fullName: decoded.first_name || decoded.phone || "Admin",
-        role: decoded.role || decoded.roles?.[0] || "USER",
-      });
+        role: decoded.role || "USER",
+      };
+
+      localStorage.setItem("token", data.accessToken);
+      localStorage.setItem("user", JSON.stringify(data.user)); // ✅ qo'shing
+
+      onLogin(userData);
+
 
     } catch (err) {
       setError("Server bilan bog'lanishda xatolik");
@@ -180,4 +184,3 @@ export default function Login({ onLogin }) {
   );
 }
 
-// #6d28d9

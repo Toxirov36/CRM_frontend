@@ -413,7 +413,6 @@ export default function Students() {
             },
           });
           const studentGroupData = await studentGroupRes.json();
-          console.log("student-group data:", studentGroupData);
           const studentGroups = Array.isArray(studentGroupData) ? studentGroupData
             : Array.isArray(studentGroupData.data) ? studentGroupData.data
               : Array.isArray(studentGroupData.student_groups) ? studentGroupData.student_groups
