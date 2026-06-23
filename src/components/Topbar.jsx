@@ -1,46 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTheme } from "./theme-provider";
 
-const PAGE_TITLES = {
-  asosiy: "Asosiy",
-  oqituvchi: "O'qituvchilar",
-  guruhlar: "Guruhlar",
-  talabalar: "Talabalar",
-  sovgalar: "Sovg'alar",
-  moliya: "Moliya",
-  boshqarish: "Boshqarish",
-};
 
 export default function Topbar({ user, activePage, onLogout }) {
   const [lang, setLang] = useState("O'zbekcha");
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark" || (!theme && document.documentElement.classList.contains("dark"))) {
-      document.documentElement.classList.add("dark");
-      setIsDark(true);
-    }
-  }, []);
+  const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-      setIsDark(true);
-    }
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
     <header className="h-14 bg-white border-b border-gray-100 flex items-center px-6 shadow-sm relative">
-      {/* Page title */}
-      <span className="font-semibold text-slate-700 text-sm">
-        {PAGE_TITLES[activePage] || "Asosiy"}
-      </span>
+
 
       <div className="flex-1" />
 
@@ -70,7 +43,7 @@ export default function Topbar({ user, activePage, onLogout }) {
           onClick={toggleTheme}
           className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-50 border border-gray-200 transition-colors"
         >
-          {isDark ? (
+          {theme === "dark" ? (
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
             </svg>

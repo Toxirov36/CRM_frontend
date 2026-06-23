@@ -36,17 +36,24 @@ function DrawerShell({ title, subtitle, onClose, onSave, children }) {
 /* ───────── Room Drawer ───────── */
 function RoomDrawer({ room, onClose, onSave }) {
   const [name, setName] = useState(room?.name || "");
+  const [capacity, setCapacity] = useState(room?.capacity ?? 0);
 
   const handle = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim() });
+    onSave({ name: name.trim(), capacity: Number(capacity) });
   };
 
   return (
     <DrawerShell title={room ? "Xonani tahrirlash" : "Xonani qo'shish"} onClose={onClose} onSave={handle}>
-      <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
-        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Xona nomi" value={name} onChange={e => setName(e.target.value)} />
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
+          <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Xona nomi" value={name} onChange={e => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-slate-800 mb-2">Sig'imi (o'rin soni)</label>
+          <input type="number" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Sig'imi (masalan: 15)" value={capacity} onChange={e => setCapacity(e.target.value)} />
+        </div>
       </div>
     </DrawerShell>
   );
@@ -80,6 +87,9 @@ export default function Rooms() {
   const [drawer, setDrawer] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [forceRefresh, setForceRefresh] = useState(0);
+
+  // Guruhga biriktirilgan xonalar ID lari
+  const [assignedRoomIds, setAssignedRoomIds] = useState(new Set());
 
   // Arxiv (inactive) rooms
   const [arxivOpen, setArxivOpen] = useState(false);
@@ -129,31 +139,39 @@ export default function Rooms() {
   // ✅ Backend dan xonalarni olish
   useEffect(() => {
     const fetchRooms = async () => {
-      // fetchRooms(); ← bu qatorni O'CHIRING
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("/api/v1/rooms", {
-          headers: {
-            "accept": "*/*",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-        const list = Array.isArray(data) ? data
-          : Array.isArray(data.data) ? data.data
-            : Array.isArray(data.rooms) ? data.rooms
+        const [roomsRes, groupsRes] = await Promise.all([
+          fetch("/api/v1/rooms", {
+            headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+          }),
+          fetch("/api/v1/groups", {
+            headers: { "accept": "*/*", "Authorization": `Bearer ${token}` },
+          })
+        ]);
+        const roomsData = await roomsRes.json();
+        const list = Array.isArray(roomsData) ? roomsData
+          : Array.isArray(roomsData.data) ? roomsData.data
+            : Array.isArray(roomsData.rooms) ? roomsData.rooms
               : [];
         setRooms(list);
+
+        // Guruhlardan biriktirilgan room_id larni aniqlash
+        const groupsData = await groupsRes.json();
+        const groups = Array.isArray(groupsData) ? groupsData
+          : Array.isArray(groupsData.data) ? groupsData.data : [];
+        const usedIds = new Set(groups.map(g => g.rooms?.id || g.room_id).filter(Boolean));
+        setAssignedRoomIds(usedIds);
       } catch (err) {
         setError("Xonalarni yuklashda xatolik");
       } finally {
         setLoading(false);
       }
     };
-    fetchRooms(); // ← faqat shu qolsin
+    fetchRooms();
   }, [forceRefresh]);
 
-  const handleSave = async ({ name }) => {
+  const handleSave = async ({ name, capacity }) => {
     try {
       const token = localStorage.getItem("token");
 
@@ -166,7 +184,7 @@ export default function Rooms() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
           },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, capacity }),
         });
 
         const data = await res.json();
@@ -186,7 +204,7 @@ export default function Rooms() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
           },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, capacity }),
         });
 
         const data = await res.json();
@@ -221,22 +239,41 @@ export default function Rooms() {
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {rooms.slice((currentPage - 1) * 12, currentPage * 12).map(room => (
-          <div key={room.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/20 transition-all group">
+        {rooms.slice((currentPage - 1) * 12, currentPage * 12).map(room => {
+          const isAssigned = assignedRoomIds.has(room.id);
+          return (
+          <div key={room.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all group ${isAssigned ? 'border-emerald-100 bg-emerald-50/10' : 'border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/20'}`}>
             <div>
               <p className="text-sm font-semibold text-slate-800">{room.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5">Qoshildi: {room.created_at?.slice(0, 10) ?? "—"}</p>
+              <p className="text-xs text-slate-500 mt-0.5">Sig'imi: {room.capacity ?? 0} ta</p>
+              {isAssigned && (
+                <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-bold">
+                  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                  Guruhga biriktirilgan
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => setDeleteId(room.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
-                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
-              </button>
+              {isAssigned ? (
+                <button
+                  disabled
+                  title="Bu xona guruhga biriktirilgan, o'chirib bo'lmaydi"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 text-gray-300 cursor-not-allowed"
+                >
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                </button>
+              ) : (
+                <button onClick={() => setDeleteId(room.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                </button>
+              )}
               <button onClick={() => setDrawer(room)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-500 transition-colors">
                 <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg>
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       
       {Math.ceil(rooms.length / 12) > 1 && (

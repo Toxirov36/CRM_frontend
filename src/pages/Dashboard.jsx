@@ -15,6 +15,8 @@ export default function Dashboard({ user }) {
 
   const [counts, setCounts] = useState({ groups: 0, courses: 0, students: 1, gifts: 3, teachers: 0 });
 
+  const isAdmin = user?.role === "SUPERADMIN" || user?.role === "ADMIN";
+
   useEffect(() => {
     const fetchCounts = async () => {
       try {
@@ -23,9 +25,9 @@ export default function Dashboard({ user }) {
 
         const [groupsRes, coursesRes, studentsRes, teachersRes] = await Promise.all([
           fetch("/api/v1/groups/all", { headers }).catch(() => ({ ok: false })),
-          fetch("/api/v1/courses", { headers }).catch(() => ({ ok: false })),
-          fetch("/api/v1/students", { headers }).catch(() => ({ ok: false })),
-          fetch("/api/v1/teachers", { headers }).catch(() => ({ ok: false }))
+          isAdmin ? fetch("/api/v1/courses", { headers }).catch(() => ({ ok: false })) : Promise.resolve({ ok: false }),
+          isAdmin ? fetch("/api/v1/students", { headers }).catch(() => ({ ok: false })) : Promise.resolve({ ok: false }),
+          isAdmin ? fetch("/api/v1/teachers", { headers }).catch(() => ({ ok: false })) : Promise.resolve({ ok: false })
         ]);
 
         let groupsCount = 0, coursesCount = 0, studentsCount = 1, teachersCount = 0;
@@ -35,19 +37,19 @@ export default function Dashboard({ user }) {
           groupsCount = data ? (Array.isArray(data) ? data.length : (data.data ? data.data.length : 0)) : 0;
         }
 
-        if (coursesRes.ok) {
+        if (coursesRes && coursesRes.ok) {
           const data = await coursesRes.json().catch(() => null);
           coursesCount = data ? (Array.isArray(data) ? data.length : (data.data ? data.data.length : 0)) : 0;
         }
 
-        if (studentsRes.ok) {
+        if (studentsRes && studentsRes.ok) {
           const data = await studentsRes.json().catch(() => null);
           if (data) {
             studentsCount = data.total || data.totalCount || data.totalElements || (Array.isArray(data) ? data.length : (Array.isArray(data.data) ? data.data.length : (Array.isArray(data.students) ? data.students.length : 0)));
           }
         }
 
-        if (teachersRes.ok) {
+        if (teachersRes && teachersRes.ok) {
           const data = await teachersRes.json().catch(() => null);
           teachersCount = data ? (Array.isArray(data) ? data.length : (data.data ? data.data.length : 0)) : 0;
         }
@@ -64,24 +66,28 @@ export default function Dashboard({ user }) {
       }
     };
     fetchCounts();
-  }, []);
+  }, [user, isAdmin]);
 
   const stats = [
     { label: "Guruhlar", value: counts.groups.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     )},
-    { label: "Kurslar", value: counts.courses.toString(), icon: (
-      <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    )},
-    { label: "Talabalar", value: counts.students.toString(), icon: (
-      <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-    )},
+    ...(isAdmin ? [
+      { label: "Kurslar", value: counts.courses.toString(), icon: (
+        <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      )},
+      { label: "Talabalar", value: counts.students.toString(), icon: (
+        <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+      )},
+    ] : []),
     { label: "Sovg'alar", value: counts.gifts.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
     )},
-    { label: "O'qituvchilar", value: counts.teachers.toString(), icon: (
-      <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M4 21v-2a4 4 0 0 1 3-3.87"/></svg>
-    )},
+    ...(isAdmin ? [
+      { label: "O'qituvchilar", value: counts.teachers.toString(), icon: (
+        <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M4 21v-2a4 4 0 0 1 3-3.87"/></svg>
+      )},
+    ] : []),
   ];
 
   const schedules = [
@@ -117,7 +123,7 @@ export default function Dashboard({ user }) {
       {/* Welcome */}
       <div className="mb-8">
         <h1 className="text-2xl font-extrabold text-slate-900">Salom, {user.first_name} 👋</h1>
-        <p className="text-slate-500 text-sm mt-1">Study platformasiga xush kelibsiz!</p>
+        <p className="text-slate-500 text-sm mt-1">ApexEdu platformasiga xush kelibsiz!</p>
       </div>
 
       {/* Stats Grid */}

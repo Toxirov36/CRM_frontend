@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 /* ───────── Add Teacher Drawer ───────── */
-function AddTeacherDrawer({ onClose, onSave, teacher }) {
+function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
   const [form, setForm] = useState({
     first_name: teacher?.first_name || "",
     last_name: teacher?.last_name || "",
@@ -17,12 +17,14 @@ function AddTeacherDrawer({ onClose, onSave, teacher }) {
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupSearch, setGroupSearch] = useState("");
   const fileRef = useRef();
 
   useEffect(() => {
     setPhotoPreview(teacher?.photo || null);
     setPhoto(null); // yangi file ni ham tozalash
-    setSelectedGroups(teacher?.groups?.map(g => g.id) || []);
+    setSelectedGroups(teacherGroups.map(g => g.id).filter(id => id !== undefined && id !== null));
 
     const fetchGroups = async () => {
       setGroupsLoading(true);
@@ -195,24 +197,27 @@ function AddTeacherDrawer({ onClose, onSave, teacher }) {
             </div>
           </div>
 
-          {/* Left-side Group Selector Modal */}
+          {/* Centered Group Selector Modal */}
           {showGroupSelector && (
             <>
               <div
-                className="fixed inset-0 bg-black/20 z-[75]"
+                className="fixed inset-0 bg-black/40 z-[75]"
                 onClick={() => setShowGroupSelector(false)}
                 style={{ pointerEvents: "auto" }}
               />
               <div
-                className="fixed top-0 bottom-0 z-[80] flex flex-col bg-white shadow-2xl border-r border-gray-100"
+                className="fixed z-[80] flex flex-col bg-white shadow-2xl rounded-2xl"
                 style={{
-                  width: "360px",
-                  right: "440px",
-                  animation: "slideInFromLeft 0.25s ease-out",
+                  width: "420px",
+                  maxHeight: "70vh",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  animation: "fadeScaleIn 0.2s ease-out",
                 }}
               >
                 {/* Modal Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-white">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-white rounded-t-2xl">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
                       <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -239,15 +244,9 @@ function AddTeacherDrawer({ onClose, onSave, teacher }) {
                     <input
                       type="text"
                       placeholder="Guruh qidirish..."
+                      value={groupSearch}
                       className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 transition-all bg-slate-50/50"
-                      onChange={(e) => {
-                        const q = e.target.value.toLowerCase();
-                        const filtered = document.querySelectorAll("[data-group-item]");
-                        filtered.forEach(el => {
-                          const name = el.getAttribute("data-group-name")?.toLowerCase() || "";
-                          el.style.display = name.includes(q) ? "" : "none";
-                        });
-                      }}
+                      onChange={(e) => setGroupSearch(e.target.value)}
                     />
                   </div>
                 </div>
@@ -266,15 +265,13 @@ function AddTeacherDrawer({ onClose, onSave, teacher }) {
                       <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
                       <p className="text-xs">Yuklanmoqda...</p>
                     </div>
-                  ) : groups.length > 0 ? (
+                  ) : groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).length > 0 ? (
                     <div className="space-y-1">
-                      {groups.map(g => {
+                      {groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map(g => {
                         const isSelected = selectedGroups.includes(g.id);
                         return (
                           <label
                             key={g.id}
-                            data-group-item
-                            data-group-name={g.name}
                             className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all ${
                               isSelected
                                 ? "bg-indigo-50 border border-indigo-200 shadow-sm"
@@ -313,20 +310,76 @@ function AddTeacherDrawer({ onClose, onSave, teacher }) {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30">
+                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 rounded-b-2xl">
                   <button
-                    onClick={() => setShowGroupSelector(false)}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
+                    onClick={async () => {
+                      if (!teacher?.id) {
+                        // Yangi o'qituvchi uchun - faqat modalni yopamiz, guruhlar handleSave da saqlanadi
+                        setShowGroupSelector(false);
+                        return;
+                      }
+                      // Mavjud o'qituvchi uchun - POST /api/v1/teacherGroup ga so'rov yuboramiz
+                      if (selectedGroups.length === 0) {
+                        setShowGroupSelector(false);
+                        return;
+                      }
+                      setGroupSaving(true);
+                      const token = localStorage.getItem("token");
+                      let hasError = false;
+                      for (const group_id of selectedGroups) {
+                        if (!group_id) continue;
+                        try {
+                          const res = await fetch("/api/v1/teacherGroup", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              "accept": "*/*",
+                              "Authorization": `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                              teacher_id: teacher.id,
+                              group_id: group_id,
+                            }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            // 409 = allaqachon guruhda, xatolik emas
+                            if (res.status !== 409) {
+                              console.error(`Guruh ${group_id} qo'shishda xatolik:`, data.message);
+                              hasError = true;
+                            }
+                          }
+                        } catch (err) {
+                          console.error(`Guruh ${group_id} qo'shishda server xatolik:`, err);
+                          hasError = true;
+                        }
+                      }
+                      setGroupSaving(false);
+                      if (hasError) {
+                        alert("Ba'zi guruhlarni qo'shishda xatolik yuz berdi");
+                      }
+                      setShowGroupSelector(false);
+                      onSave();
+                    }}
+                    disabled={groupSaving}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
                   >
-                    Tasdiqlash ({selectedGroups.length})
+                    {groupSaving ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Saqlanmoqda...
+                      </span>
+                    ) : (
+                      `Tasdiqlash (${selectedGroups.length})`
+                    )}
                   </button>
                 </div>
               </div>
 
               <style>{`
-                @keyframes slideInFromLeft {
-                  from { transform: translateX(-100%); opacity: 0; }
-                  to { transform: translateX(0); opacity: 1; }
+                @keyframes fadeScaleIn {
+                  from { transform: translate(-50%, -50%) scale(0.95); opacity: 0; }
+                  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
                 }
               `}</style>
             </>
@@ -399,6 +452,41 @@ export default function Teachers() {
   const [arxivOpen, setArxivOpen] = useState(false);
   const [arxivTeachers, setArxivTeachers] = useState([]);
   const [arxivLoading, setArxivLoading] = useState(false);
+
+  // Teacher-Group birikmalari
+  const [teacherGroupMap, setTeacherGroupMap] = useState({});
+
+  const fetchTeacherGroups = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/teacherGroup/get/teacherGroup", {
+        headers: {
+          "accept": "*/*",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      const list = Array.isArray(data) ? data
+        : Array.isArray(data.data) ? data.data
+          : [];
+
+      // teacher_id bo'yicha guruhlarni guruhlash
+      const map = {};
+      list.forEach(item => {
+        const tid = item.teacher?.id;
+        if (tid) {
+          if (!map[tid]) map[tid] = [];
+          map[tid].push({
+            id: item.group?.id,
+            name: item.group?.name,
+          });
+        }
+      });
+      setTeacherGroupMap(map);
+    } catch (err) {
+      console.error("TeacherGroup yuklashda xatolik:", err);
+    }
+  };
 
   const fetchArxiv = async () => {
     setArxivLoading(true);
@@ -477,6 +565,7 @@ export default function Teachers() {
       }
     };
     fetchTeachers();
+    fetchTeacherGroups();
   }, [page, forceRefresh]);
 
   const handleDelete = async (id) => {
@@ -529,15 +618,8 @@ export default function Teachers() {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">O'qituvchilar</h1>
-          <p className="text-slate-500 text-[13px] mt-1.5 max-w-2xl leading-relaxed">
-            Ushbu sahifada siz o'qituvchilar ro'yxatini va ularning ma'lumotlarini topasiz. Har bir o'qituvchining ismi, fanlari va aloqa ma'lumotlari keltirilgan.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-gray-50 transition-all">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-            Export
-          </button>
           <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95">
             + O'qituvchi qoshish
           </button>
@@ -546,18 +628,7 @@ export default function Teachers() {
 
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          {/* <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-gray-50 transition-all">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
-            Filters
-          </button> */}
-          {selected.length > 0 && (
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-500 border border-red-100 rounded-xl text-sm font-bold hover:bg-red-100 transition-all">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
-              O'chirish ({selected.length})
-            </button>
-          )}
-        </div>
+        <div className="flex items-center gap-3"></div>
         <div className="flex items-center gap-3 flex-1 max-w-md md:justify-end">
           <div className="relative flex-1 max-w-xs">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -581,9 +652,6 @@ export default function Teachers() {
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-50 bg-slate-50/20">
-                <th className="py-4 px-6 w-12 text-center">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-indigo-600" checked={filteredTeachers.length > 0 && selected.length === filteredTeachers.length} onChange={toggleAll} />
-                </th>
                 <th className="py-4 px-6 whitespace-nowrap">Nomi <span className="text-[10px] ml-1">↓</span></th>
                 <th className="py-4 px-6 whitespace-nowrap">Guruh</th>
                 <th className="py-4 px-6 whitespace-nowrap">Telefon raqamlari</th>
@@ -596,14 +664,11 @@ export default function Teachers() {
 
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr>
               ) : filteredTeachers.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-300">Ma'lumot yo'q</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-slate-300">Ma'lumot yo'q</td></tr>
               ) : filteredTeachers.map(t => (
-                <tr key={t.id} className={`group hover:bg-slate-50/30 transition-colors ${selected.includes(t.id) ? "bg-indigo-50/10" : ""}`}>
-                  <td className="py-4 px-6 text-center">
-                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-indigo-600" checked={selected.includes(t.id)} onChange={() => toggleOne(t.id)} />
-                  </td>
+                <tr key={t.id} className="group hover:bg-slate-50/30 transition-colors">
 
                   {/* ✅ Ism */}
                   <td className="py-4 px-6 whitespace-nowrap">
@@ -617,15 +682,15 @@ export default function Teachers() {
                     </div>
                   </td>
 
-                  {/* ✅ Guruhlar */}
+                  {/* ✅ Guruhlar (teacherGroup endpointidan) */}
                   <td className="py-4 px-6">
                     <div className="flex flex-wrap gap-1.5 min-w-[80px]">
-                      {(t.groups || t.courses || []).map((g, i) => (
+                      {(teacherGroupMap[t.id] || []).map((g, i) => (
                         <span key={i} className="px-2 py-0.5 rounded-md border border-gray-100 bg-gray-50 text-[10px] font-bold text-slate-400 uppercase tracking-tighter whitespace-nowrap">
-                          {g?.name || g}
+                          {g?.name || "—"}
                         </span>
                       ))}
-                      {!(t.groups || t.courses)?.length && <span className="text-xs text-slate-300">—</span>}
+                      {!(teacherGroupMap[t.id] || []).length && <span className="text-xs text-slate-300">—</span>}
                     </div>
                   </td>
 
@@ -650,7 +715,7 @@ export default function Teachers() {
                   </td>
 
                   <td className="py-4 px-6 text-right pr-8 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></button>
                       <button onClick={() => setDeleteId(t.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg></button>
                       <button onClick={() => openEdit(t)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg></button>
@@ -692,6 +757,7 @@ export default function Teachers() {
       {drawer && (
         <AddTeacherDrawer
           teacher={editingTeacher}
+          teacherGroups={editingTeacher ? (teacherGroupMap[editingTeacher.id] || []) : []}
           onClose={() => setDrawer(false)}
           onSave={() => {
             setDrawer(false);

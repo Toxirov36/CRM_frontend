@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
+import { ThemeProvider } from "./components/theme-provider";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Teachers from "./pages/Teachers";
@@ -10,6 +11,7 @@ import Guruhlar from "./pages/Guruhlar";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import GroupDetails from "./pages/GroupDetails";
+import StudentDashboard from "./pages/StudentDashboard";
 
 function AppContent() {
   const navigate = useNavigate();
@@ -25,13 +27,38 @@ function AppContent() {
     }
   });
 
-  // ✅ URL dan activePage olish:
   const pathParts = location.pathname.split("/").filter(Boolean);
-  const activePage = pathParts[0] || "asosiy";
-  const pathParam = pathParts[1];
+  
+  let activePage = pathParts[0] || (user?.role === "TEACHER" ? "guruhlar" : "asosiy");
+  let pathParam = null;
+  let urlLessonId = null;
+  let urlStaffId = null;
+  let urlHomeworkId = null;
+
+  if (activePage === "my-groups") {
+    activePage = "guruhlar";
+    if (pathParts[1] === "chapters") {
+      pathParam = pathParts[2] || null;
+      
+      // Parse nested URL parameters
+      for (let i = 3; i < pathParts.length; i += 2) {
+        const key = pathParts[i];
+        const val = pathParts[i + 1];
+        if (key === "lesson" && val) urlLessonId = val;
+        if (key === "staff" && val) urlStaffId = val;
+        if (key === "homeworkId" && val) urlHomeworkId = val;
+      }
+    }
+  } else {
+    pathParam = pathParts[1] || null;
+  }
 
   const handleSetActivePage = (page) => {
-    navigate(page === "asosiy" ? "/" : `/${page}`);
+    if (page === "guruhlar") {
+      navigate("/my-groups/chapters");
+    } else {
+      navigate(page === "asosiy" ? "/" : `/${page}`);
+    }
   };
 
   const handleLogout = useCallback(() => {
@@ -40,6 +67,11 @@ function AppContent() {
     setUser(null);
     navigate("/");
   }, [navigate]);
+
+  const handleLogoutRef = useRef(handleLogout);
+  useEffect(() => {
+    handleLogoutRef.current = handleLogout;
+  }, [handleLogout]);
 
   const getTokenExpirationTime = useCallback(() => {
     const token = localStorage.getItem("token");
@@ -72,13 +104,44 @@ function AppContent() {
   }, [getTokenExpirationTime, handleLogout, user]);
 
   useEffect(() => {
+    if (user?.role === "TEACHER" && (location.pathname === "/" || location.pathname === "/guruhlar")) {
+      navigate("/my-groups/chapters", { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (location.pathname === "/auth/callback") {
+      const params = new URLSearchParams(location.search);
+      const token = params.get("token");
+      if (token) {
+        try {
+          const base64 = token.split('.')[1];
+          const base64Fixed = base64.replace(/-/g, '+').replace(/_/g, '/');
+          const decoded = JSON.parse(atob(base64Fixed));
+          const userData = {
+            ...decoded,
+            fullName: decoded.first_name || decoded.phone || "Admin",
+            role: decoded.role || "USER",
+          };
+          localStorage.setItem("token", token);
+          localStorage.setItem("user", JSON.stringify(userData));
+          setUser(userData);
+          navigate("/", { replace: true });
+        } catch (err) {
+          console.error("Token decoding error", err);
+        }
+      }
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
     const originalFetch = window.fetch;
 
     window.fetch = async (...args) => {
       const response = await originalFetch(...args);
 
       if (localStorage.getItem("token") && response.status === 401) {
-        handleLogout();
+        handleLogoutRef.current();
       }
 
       return response;
@@ -87,7 +150,7 @@ function AppContent() {
     return () => {
       window.fetch = originalFetch;
     };
-  }, [handleLogout]);
+  }, []);
 
   const currentPage = useMemo(() => {
     if (!user) return null;
@@ -95,18 +158,28 @@ function AppContent() {
       case "asosiy":     return <Dashboard user={user} />;
       case "oqituvchi":  return <Teachers />;
       case "guruhlar":
+      case "yigilayotgan-guruhlar":
         if (pathParam) {
-          return <GroupDetails id={pathParam} />;
+          return (
+            <GroupDetails 
+              id={pathParam} 
+              user={user} 
+              urlHomeworkId={urlHomeworkId}
+              urlLessonId={urlLessonId}
+              urlStaffId={urlStaffId}
+            />
+          );
         }
-        return <Guruhlar />;
+        return <Guruhlar user={user} isTeacher={user.role === "TEACHER"} type={activePage} />;
       case "talabalar":  return <Students />;
       case "kurslar":    return <Courses />;
       case "sovgalar":   return <ComingSoon title="Sovg'alar" icon="🎁" />;
       case "moliya":     return <ComingSoon title="Moliya" icon="💰" />;
       case "boshqarish": return <Boshqarish />;
+      case "profil":     return <ComingSoon title="Profil" icon="👤" />;
       default:           return <Dashboard user={user} />;
     }
-  }, [activePage, pathParam, user]);
+  }, [activePage, pathParam, user, urlHomeworkId, urlLessonId, urlStaffId]);
 
   if (!user) {
     return <Login onLogin={(userData) => {
@@ -116,9 +189,14 @@ function AppContent() {
     }} />;
   }
 
+  // Student gets a completely separate portal
+  if (user.role === "STUDENT") {
+    return <StudentDashboard user={user} onLogout={handleLogout} />;
+  }
+
   return (
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
-      <Sidebar activePage={activePage} setActivePage={handleSetActivePage} />
+      <Sidebar activePage={activePage} setActivePage={handleSetActivePage} user={user} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar user={user} activePage={activePage} onLogout={() => {
           handleLogout();
@@ -133,9 +211,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ThemeProvider defaultTheme="light" storageKey="theme">
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

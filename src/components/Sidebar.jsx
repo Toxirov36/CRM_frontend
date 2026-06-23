@@ -20,7 +20,7 @@ const MENU_ITEMS = [
   },
 ];
 
-const NAV = [
+const ADMIN_NAV = [
   {
     id: "asosiy", label: "Asosiy",
     svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
@@ -51,81 +51,136 @@ const NAV = [
   },
 ];
 
-export default function Sidebar({ activePage, setActivePage }) {
+const TEACHER_NAV = [
+  {
+    id: "guruhlar", label: "Guruhlar",
+    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+    subItems: [
+      { id: "guruhlar", label: "Guruhlar" },
+      { id: "yigilayotgan-guruhlar", label: "Yig'ilayotgan guruhlar" }
+    ]
+  },
+  {
+    id: "profil", label: "Profil",
+    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  },
+];
+
+export default function Sidebar({ activePage, setActivePage, user }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [expandedNav, setExpandedNav] = useState("guruhlar");
   const navigate = useNavigate();
+
+  const isTeacher = user?.role === "TEACHER";
+  const NAV = isTeacher ? TEACHER_NAV : ADMIN_NAV;
 
   return (
     <div className="w-56 bg-white border-r border-gray-100 flex flex-col h-full shadow-sm relative">
 
       {/* Logo + Menu button */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">S</div>
-          <span className="font-bold text-slate-800 text-sm">Study</span>
+        <div className="flex items-center gap-1 select-none">
+          <span className="font-black text-[22px] tracking-tight">
+            <span className="text-[#0E3563]">Apex</span>
+            <span className="text-[#3FA1DF]">Edu</span>
+          </span>
         </div>
 
-        {/* Menu trigger button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(s => !s)}
-            className="w-7 h-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white transition-colors shadow-md shadow-indigo-100"
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
+        {/* Menu trigger button (Admin only) */}
+        {!isTeacher && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(s => !s)}
+              className="w-7 h-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white transition-all shadow-md shadow-indigo-100 active:scale-95"
+            >
+              <svg 
+                width="14" 
+                height="14" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                viewBox="0 0 24 24"
+                className={`transition-transform duration-300 ${showMenu ? "rotate-180" : ""}`}
+              >
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
 
-          {/* Dropdown */}
-          {showMenu && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
-              <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl border border-gray-100 shadow-2xl z-40 overflow-hidden">
-                {/* <div className="px-4 py-2.5 border-b border-gray-100">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu</p>
-                </div> */}
-                <div className="py-1">
-                  {MENU_ITEMS.map(m => (
-                    <button
-                      key={m.label}
-                      onClick={() => {
-                        navigate(`/boshqarish/${m.tab}`);
-                        setShowMenu(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left group"
-                    >
-                      <span className="text-slate-400 group-hover:text-indigo-500 transition-colors">{m.svg}</span>
-                      {m.label}
-                    </button>
-                  ))}
+            {/* Dropdown (sliding to the right) */}
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
+                <div className="absolute top-0 left-full ml-3 w-52 bg-white rounded-2xl border border-gray-100 shadow-2xl z-40 overflow-hidden animate-slide-in-right">
+                  <div className="py-1">
+                    {MENU_ITEMS.map(m => (
+                      <button
+                        key={m.label}
+                        onClick={() => {
+                          navigate(`/boshqarish/${m.tab}`);
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-left group"
+                      >
+                        <span className="text-slate-400 group-hover:text-indigo-500 transition-colors">{m.svg}</span>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
         {NAV.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActivePage(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${activePage === item.id
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-          >
-            <span className={activePage === item.id ? "text-white" : "text-slate-400"}>
-              {item.svg}
-            </span>
-            <span className="flex-1 text-left">{item.label}</span>
-            {item.badge && (
-              <span className="text-xs bg-orange-400 text-white rounded-full px-1.5 py-0.5 font-semibold leading-none">
-                {item.badge}
+          <div key={item.id}>
+            <button
+              onClick={() => {
+                if (item.subItems) {
+                  setExpandedNav(expandedNav === item.id ? null : item.id);
+                  setActivePage(item.subItems[0].id); // Go to first sub item by default
+                } else {
+                  setActivePage(item.id);
+                  setExpandedNav(null);
+                }
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${activePage === item.id || (item.subItems && item.subItems.some(sub => sub.id === activePage))
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+            >
+              <span className={activePage === item.id || (item.subItems && item.subItems.some(sub => sub.id === activePage)) ? "text-white" : "text-slate-400"}>
+                {item.svg}
               </span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.badge && (
+                <span className="text-xs bg-orange-400 text-white rounded-full px-1.5 py-0.5 font-semibold leading-none">
+                  {item.badge}
+                </span>
+              )}
+              {item.subItems && (
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={`transition-transform duration-300 ${expandedNav === item.id ? "rotate-180" : ""}`}>
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              )}
+            </button>
+            {item.subItems && expandedNav === item.id && (
+              <div className="mt-1 ml-9 space-y-1">
+                {item.subItems.map(sub => (
+                  <button
+                    key={sub.id}
+                    onClick={() => setActivePage(sub.id)}
+                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${activePage === sub.id ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+                  >
+                    {sub.label}
+                  </button>
+                ))}
+              </div>
             )}
-          </button>
+          </div>
         ))}
       </nav>
 

@@ -1,4 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { DatePicker } from "../components/ui/date-picker";
+
+const getPhotoUrl = (photo) => {
+  if (!photo || photo === "null" || photo === "undefined" || photo.endsWith("/null") || photo.endsWith("/undefined")) return null;
+  return photo;
+};
 
 /* ───────── Add Student Drawer ───────── */
 function AddStudentDrawer({ onClose, onSave, student }) {
@@ -10,12 +16,23 @@ function AddStudentDrawer({ onClose, onSave, student }) {
     phone: student?.phone || "",
     birth_date: student?.birth_date ? student.birth_date.split('T')[0] : "",
     address: student?.address || "",   // ixtiyoriy
-    group_id: student?.group_id || "",
   });
   const [groups, setGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupSearch, setGroupSearch] = useState("");
 
   useEffect(() => {
+    if (student?.groupIds) {
+      setSelectedGroups(student.groupIds);
+    } else {
+      setSelectedGroups([]);
+    }
+
     const fetchGroups = async () => {
+      setGroupsLoading(true);
       try {
         const token = localStorage.getItem("token");
         const res = await fetch("/api/v1/groups/all", {
@@ -26,20 +43,23 @@ function AddStudentDrawer({ onClose, onSave, student }) {
         setGroups(list);
       } catch (err) {
         console.error("Guruhlarni yuklashda xatolik", err);
+      } finally {
+        setGroupsLoading(false);
       }
     };
     fetchGroups();
-  }, []);
+  }, [student]);
   const [photo, setPhoto] = useState(null);       // ixtiyoriy - File object
   const [photoPreview, setPhotoPreview] = useState(student?.photo || null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef();
 
   useEffect(() => {
-    if (student?.photo) {
-      const preview = student.photo.startsWith('http')
-        ? student.photo
-        : `/uploads/${student.photo}`;
+    const validPhoto = getPhotoUrl(student?.photo);
+    if (validPhoto) {
+      const preview = validPhoto.startsWith('http')
+        ? validPhoto
+        : `/uploads/${validPhoto}`;
       setPhotoPreview(preview);
     } else {
       setPhotoPreview(null);
@@ -57,14 +77,12 @@ function AddStudentDrawer({ onClose, onSave, student }) {
   const handleSave = async () => {
     const { first_name, last_name, email, password, phone, birth_date } = form;
 
-    // Validatsiya
     if (!first_name.trim() || !last_name.trim() || !email.trim() ||
       (!student && !password) || !phone.trim() || !birth_date) {
       alert("Iltimos, barcha majburiy (*) maydonlarni to'ldiring");
       return;
     }
 
-    // Phone format tekshirish
     const phoneRegex = /^\+?[0-9]{9,15}$/;
     if (!phoneRegex.test(phone.trim())) {
       alert("Telefon raqami noto'g'ri (masalan: +998901234567)");
@@ -83,7 +101,6 @@ function AddStudentDrawer({ onClose, onSave, student }) {
       fd.append("phone", phone.trim());
       fd.append("birth_date", birth_date);
       if (form.address.trim()) fd.append("address", form.address.trim());
-      if (form.group_id) fd.append("group_id", form.group_id);
       if (photo) fd.append("photo", photo);
 
       const url = student ? `/api/v1/students/${student.id}` : "/api/v1/students";
@@ -103,27 +120,32 @@ function AddStudentDrawer({ onClose, onSave, student }) {
         return;
       }
 
-      if (form.group_id) {
-        const studentId = student ? student.id : (data.data?.id || data.id || data.student?.id);
-        if (studentId) {
-          const sgRes = await fetch("/api/v1/student-group", {
-            method: "POST",
-            headers: {
-              "accept": "*/*",
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              student_id: Number(studentId),
-              group_id: Number(form.group_id)
-            })
-          });
-          const sgData = await sgRes.json();
-          console.log("student-group response:", sgData);
+      const studentId = student ? student.id : (data.data?.id || data.id || data.student?.id);
+      if (studentId && selectedGroups.length > 0) {
+        const initialGroupIds = student?.groupIds || [];
+        const groupsToAdd = selectedGroups.filter(id => !initialGroupIds.includes(id));
+        
+        for (const groupId of groupsToAdd) {
+          try {
+            await fetch("/api/v1/student-group", {
+              method: "POST",
+              headers: {
+                "accept": "*/*",
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                student_id: Number(studentId),
+                group_id: Number(groupId)
+              })
+            });
+          } catch (err) {
+            console.error("Guruh biriktirishda xatolik:", err);
+          }
         }
       }
 
-      onSave(); // ro'yxatni yangilash
+      onSave();
     } catch (err) {
       alert("Server bilan bog'lanishda xatolik");
     } finally {
@@ -193,10 +215,16 @@ function AddStudentDrawer({ onClose, onSave, student }) {
           <div>
             <label className="block text-sm font-bold text-slate-800 mb-2">Tug'ilgan sana <span className="text-red-500">*</span></label>
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
                 <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
               </div>
-              <input type="date" className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" value={form.birth_date} onChange={set("birth_date")} />
+              <DatePicker
+                value={form.birth_date}
+                onChange={(val) => setForm(f => ({ ...f, birth_date: val }))}
+                className="pl-11 h-11 rounded-xl text-sm border-gray-200 text-slate-800 focus:border-indigo-400"
+                captionLayout="dropdown"
+                showLeftIcon={false}
+              />
             </div>
           </div>
 
@@ -208,26 +236,201 @@ function AddStudentDrawer({ onClose, onSave, student }) {
 
           {/* Guruhga biriktirish — ixtiyoriy */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Guruhga biriktirish <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </div>
-              <select 
-                className="w-full border border-gray-200 rounded-xl pl-11 pr-10 py-3 text-sm outline-none focus:border-indigo-400 transition-all appearance-none bg-white" 
-                value={form.group_id} 
-                onChange={set("group_id")}
+            <label className="block text-sm font-bold text-slate-800 mb-3">Guruhga biriktirish <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
+            <div className="space-y-2.5">
+              {selectedGroups.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {groups.filter(g => selectedGroups.includes(g.id)).map(g => (
+                    <div key={g.id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg">
+                      <span className="text-xs font-semibold text-indigo-600">{g.name}</span>
+                      <button
+                        onClick={() => setSelectedGroups(selectedGroups.filter(id => id !== g.id))}
+                        className="text-indigo-400 hover:text-indigo-600 transition-colors"
+                      >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setShowGroupSelector(!showGroupSelector)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-indigo-300 rounded-xl text-indigo-600 font-semibold text-sm hover:bg-indigo-50 transition-colors"
               >
-                <option value="">Guruhni tanlang...</option>
-                {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-              </div>
+                + Qo'shish
+              </button>
             </div>
           </div>
+
+          {/* Centered Group Selector Modal */}
+          {showGroupSelector && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/40 z-[75]"
+                onClick={() => setShowGroupSelector(false)}
+                style={{ pointerEvents: "auto" }}
+              />
+              <div
+                className="fixed z-[80] flex flex-col bg-white shadow-2xl rounded-2xl animate-in zoom-in-95 duration-200"
+                style={{
+                  width: "420px",
+                  maxHeight: "70vh",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-white rounded-t-2xl">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900">Guruhlar</h3>
+                      <p className="text-[11px] text-slate-400">Guruhni tanlang</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowGroupSelector(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Guruh qidirish..."
+                      value={groupSearch}
+                      className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 transition-all bg-slate-50/50"
+                      onChange={(e) => setGroupSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Selected count badge */}
+                {selectedGroups.length > 0 && (
+                  <div className="px-4 py-2 bg-indigo-50/50 border-b border-indigo-100/50">
+                    <span className="text-xs font-bold text-indigo-600">{selectedGroups.length} ta guruh tanlangan</span>
+                  </div>
+                )}
+
+                {/* Groups List */}
+                <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
+                  {groupsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                      <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                      <p className="text-xs">Yuklanmoqda...</p>
+                    </div>
+                  ) : groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).length > 0 ? (
+                    <div className="space-y-1">
+                      {groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map(g => {
+                        const isSelected = selectedGroups.includes(g.id);
+                        return (
+                          <label
+                            key={g.id}
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all ${
+                              isSelected
+                                ? "bg-indigo-50 border border-indigo-200 shadow-sm"
+                                : "hover:bg-slate-50 border border-transparent"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setSelectedGroups(selectedGroups.filter(id => id !== g.id));
+                                } else {
+                                  setSelectedGroups([...selectedGroups, g.id]);
+                                }
+                              }}
+                              className="accent-indigo-600 w-4 h-4 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-bold ${isSelected ? "text-indigo-700" : "text-slate-800"}`}>{g.name}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{g.courses?.name || g.course_name || "—"}</p>
+                            </div>
+                            {isSelected && (
+                              <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                      <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><circle cx="9" cy="7" r="4" /></svg>
+                      <p className="text-sm">Guruhlar mavjud emas</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 rounded-b-2xl">
+                  <button
+                    onClick={async () => {
+                      if (!student?.id) {
+                        setShowGroupSelector(false);
+                        return;
+                      }
+                      if (selectedGroups.length === 0) {
+                        setShowGroupSelector(false);
+                        return;
+                      }
+                      setGroupSaving(true);
+                      const token = localStorage.getItem("token");
+                      let hasError = false;
+                      for (const group_id of selectedGroups) {
+                        if (!group_id) continue;
+                        try {
+                          const res = await fetch("/api/v1/student-group", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              "accept": "*/*",
+                              "Authorization": `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                              student_id: student.id,
+                              group_id: group_id,
+                            }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            if (res.status !== 409) {
+                              console.error(`Guruh ${group_id} qo'shishda xatolik:`, data.message);
+                              hasError = true;
+                            }
+                          }
+                        } catch (err) {
+                          console.error(`Guruh ${group_id} qo'shishda server xatolik:`, err);
+                          hasError = true;
+                        }
+                      }
+                      setGroupSaving(false);
+                      if (hasError) {
+                        alert("Ba'zi guruhlarni qo'shishda xatolik yuz berdi");
+                      }
+                      setShowGroupSelector(false);
+                      onSave();
+                    }}
+                    disabled={groupSaving}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
+                  >
+                    {groupSaving ? "Saqlanmoqda..." : "Tasdiqlash"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Rasm — ixtiyoriy */}
           <div>
@@ -333,12 +536,11 @@ export default function Students() {
         // Talabalarning guruhlarini birlash
         const listWithGroups = list.map(student => {
           const studentGroupsForThisStudent = studentGroups
-            .filter(sg => sg.student_id === student.id)
-            .map(sg => sg.group_name || sg.group?.name || sg.name)
-            .filter(Boolean);
+            .filter(sg => sg.student_id === student.id || sg.students?.id === student.id);
           return {
             ...student,
-            groups: studentGroupsForThisStudent
+            groups: studentGroupsForThisStudent.map(sg => sg.group_name || sg.groups?.name || sg.name).filter(Boolean),
+            groupIds: studentGroupsForThisStudent.map(sg => sg.group_id || sg.groups?.id || sg.id).filter(Boolean)
           };
         });
 
@@ -422,12 +624,11 @@ export default function Students() {
           // Talabalarning guruhlarini birlash
           const listWithGroups = list.map(student => {
             const studentGroupsForThisStudent = studentGroups
-              .filter(sg => sg.students?.id === student.id)
-              .map(sg => sg.groups?.name)
-              .filter(Boolean);
+              .filter(sg => sg.students?.id === student.id || sg.student_id === student.id);
             return {
               ...student,
-              groups: studentGroupsForThisStudent
+              groups: studentGroupsForThisStudent.map(sg => sg.groups?.name || sg.group_name || sg.name).filter(Boolean),
+              groupIds: studentGroupsForThisStudent.map(sg => sg.groups?.id || sg.group_id || sg.id).filter(Boolean)
             };
           });
 
@@ -489,15 +690,8 @@ export default function Students() {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">Talabalar</h1>
-          <p className="text-slate-500 text-[13px] mt-1.5 max-w-2xl leading-relaxed">
-            Ushbu sahifada siz Talabalar ro'yxatini va ularning ma'lumotlarini topasiz. Har bir Talaba ismi, fanlari va aloqa ma'lumotlari keltirilgan.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-gray-50 transition-all">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-            Export
-          </button>
           <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95">
             + Talaba qoshish
           </button>
@@ -537,9 +731,6 @@ export default function Students() {
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-50 bg-slate-50/20">
-                <th className="py-4 px-6 w-12 text-center">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-indigo-600" />
-                </th>
                 <th className="py-4 px-6 whitespace-nowrap">Nomi <span className="text-[10px] ml-1">↓</span></th>
                 <th className="py-4 px-6 whitespace-nowrap">Guruh</th>
                 <th className="py-4 px-6 whitespace-nowrap">Telefon raqamlari</th>
@@ -551,20 +742,16 @@ export default function Students() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr>
               ) : filteredStudents.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-300">Talabalar topilmadi</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-slate-300">Talabalar topilmadi</td></tr>
               ) : filteredStudents.map(s => (
                 <tr key={s.id} className="group hover:bg-slate-50/30 transition-colors">
-                  <td className="py-4 px-6 text-center">
-                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 accent-indigo-600" />
-                  </td>
-
                   {/* ✅ first_name + last_name */}
                   <td className="py-4 px-6 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-gray-100 shrink-0">
-                        <img src={s.photo || `https://ui-avatars.com/api/?name=${s.first_name}+${s.last_name}&background=random`} alt="" />
+                        <img src={getPhotoUrl(s.photo) || `https://ui-avatars.com/api/?name=${s.first_name}+${s.last_name}&background=random`} alt="" />
                       </div>
                       <span className="text-sm font-bold text-slate-800">{s.first_name} {s.last_name}</span>
                     </div>
@@ -597,7 +784,7 @@ export default function Students() {
                   </td>
 
                   <td className="py-4 px-6 text-right pr-8 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></button>
                       <button onClick={() => setDeleteId(s.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg></button>
                       <button onClick={() => openEdit(s)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg></button>
