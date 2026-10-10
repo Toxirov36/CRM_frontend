@@ -337,23 +337,24 @@ export default function Login({ onLogin }) {
                 {loading ? t("login.loading", "Kirilmoqda...") : t("login.submit", "Kirish")}
               </button>
 
-              {/* DIVIDER */}
-              <p className="text-center text-sm text-gray-500 mb-4">
-                <span className="font-bold text-gray-800">Login</span> with Others
-              </p>
-
-              {/* GOOGLE */}
-              {import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true" && <button
-                onClick={() => window.location.href = "/api/v1/auth/google"}
-                className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl mb-3 hover:bg-gray-50 transition-colors duration-200 text-sm text-gray-700 cursor-pointer"
-              >
-                <img
-                  src="https://www.svgrepo.com/show/475656/google-color.svg"
-                  className="w-5 h-5"
-                  alt="Google"
-                />
-                Login with <span className="font-bold">Google</span>
-              </button>}
+              {import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true" && (
+                <>
+                  <p className="text-center text-sm text-gray-500 mb-4">
+                    <span className="font-bold text-gray-800">Login</span> with Others
+                  </p>
+                  <button
+                    onClick={() => window.location.href = "/api/v1/auth/google"}
+                    className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl mb-3 hover:bg-gray-50 transition-colors duration-200 text-sm text-gray-700 cursor-pointer"
+                  >
+                    <img
+                      src="https://www.svgrepo.com/show/475656/google-color.svg"
+                      className="w-5 h-5"
+                      alt="Google"
+                    />
+                    Login with <span className="font-bold">Google</span>
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <>
