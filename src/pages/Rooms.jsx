@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useLanguage } from '../context/language-context';
 
 /* ───────── Common Drawer Shell ───────── */
 function DrawerShell({ title, subtitle, onClose, onSave, children }) {
+  const { t } = useLanguage();
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
@@ -22,10 +24,10 @@ function DrawerShell({ title, subtitle, onClose, onSave, children }) {
         </div>
         <div className="px-8 py-6 border-t border-gray-50 flex gap-3 justify-end bg-gray-50/30">
           <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">
-            Bekor qilish
+            {t("common.cancel", "Bekor qilish")}
           </button>
           <button onClick={onSave} className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] text-white text-sm font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95">
-            Saqlash
+            {t("common.save", "Saqlash")}
           </button>
         </div>
       </div>
@@ -35,6 +37,7 @@ function DrawerShell({ title, subtitle, onClose, onSave, children }) {
 
 /* ───────── Room Drawer ───────── */
 function RoomDrawer({ room, onClose, onSave }) {
+  const { t } = useLanguage();
   const [name, setName] = useState(room?.name || "");
   const [capacity, setCapacity] = useState(room?.capacity ?? 0);
 
@@ -44,15 +47,15 @@ function RoomDrawer({ room, onClose, onSave }) {
   };
 
   return (
-    <DrawerShell title={room ? "Xonani tahrirlash" : "Xonani qo'shish"} onClose={onClose} onSave={handle}>
+    <DrawerShell title={room ? t("rooms.edit", "Xonani tahrirlash") : t("rooms.add", "Xonani qo'shish")} onClose={onClose} onSave={handle}>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
-          <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Xona nomi" value={name} onChange={e => setName(e.target.value)} />
+          <label className="block text-sm font-bold text-slate-800 mb-2">{t("rooms.name", "Nomi")}</label>
+          <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder={t("rooms.name", "Xona nomi")} value={name} onChange={e => setName(e.target.value)} />
         </div>
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-2">Sig'imi (o'rin soni)</label>
-          <input type="number" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Sig'imi (masalan: 15)" value={capacity} onChange={e => setCapacity(e.target.value)} />
+          <label className="block text-sm font-bold text-slate-800 mb-2">{t("rooms.capacity_seats", "Sig'imi (o'rin soni)")}</label>
+          <input type="number" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder={t("rooms.capacity_seats", "Sig'imi (masalan: 15)")} value={capacity} onChange={e => setCapacity(e.target.value)} />
         </div>
       </div>
     </DrawerShell>
@@ -61,16 +64,17 @@ function RoomDrawer({ room, onClose, onSave }) {
 
 /* ───────── Helpers ───────── */
 function DeleteConfirm({ onClose, onConfirm }) {
+  const { t } = useLanguage();
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
-          <h3 className="font-bold text-slate-900 text-lg mb-2">O'chirishni tasdiqlaysizmi?</h3>
-          <p className="text-sm text-slate-500 mb-6">Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.</p>
+          <h3 className="font-bold text-slate-900 text-lg mb-2">{t("common.delete_confirm_title", "O'chirishni tasdiqlaysizmi?")}</h3>
+          <p className="text-sm text-slate-500 mb-6">{t("common.delete_confirm_desc", "Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.")}</p>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">Yo'q</button>
-            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">Ha, o'chirilsin</button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">{t("common.no", "Yo'q")}</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">{t("common.confirm_delete_btn", "Ha, o'chirilsin")}</button>
           </div>
         </div>
       </div>
@@ -80,6 +84,7 @@ function DeleteConfirm({ onClose, onConfirm }) {
 
 /* ───────── Xonalar Tab ───────── */
 export default function Rooms() {
+  const { t } = useLanguage();
   const [rooms, setRooms] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -222,19 +227,19 @@ export default function Rooms() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Yuklanmoqda...</div>;
+  if (loading) return <div className="flex items-center justify-center h-40 text-slate-400 text-sm">{t("common.loading", "Yuklanmoqda...")}</div>;
   if (error) return <div className="flex items-center justify-center h-40 text-red-400 text-sm">{error}</div>;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-bold text-slate-800 text-base">Xonalar ro'yxati</h2>
+        <h2 className="font-bold text-slate-800 text-base">{t("rooms.list_title", "Xonalar ro'yxati")}</h2>
         <div className="flex items-center gap-2">
           <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-slate-700 text-sm font-semibold rounded-xl transition-all">
-            Arxiv <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+            {t("table.archive", "Arxiv")} <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
           </button>
           <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
-            + Xonani qo'shish
+            {t("rooms.add", "+ Xonani qo'shish")}
           </button>
         </div>
       </div>
@@ -245,11 +250,11 @@ export default function Rooms() {
           <div key={room.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all group ${isAssigned ? 'border-emerald-100 bg-emerald-50/10' : 'border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/20'}`}>
             <div>
               <p className="text-sm font-semibold text-slate-800">{room.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5">Sig'imi: {room.capacity ?? 0} ta</p>
+              <p className="text-xs text-slate-500 mt-0.5">{t("rooms.capacity", "Sig'imi")}: {room.capacity ?? 0} {t("rooms.seats_unit", "ta")}</p>
               {isAssigned && (
                 <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-bold">
                   <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
-                  Guruhga biriktirilgan
+                  {t("rooms.assigned_badge", "Guruhga biriktirilgan")}
                 </span>
               )}
             </div>
@@ -257,7 +262,7 @@ export default function Rooms() {
               {isAssigned ? (
                 <button
                   disabled
-                  title="Bu xona guruhga biriktirilgan, o'chirib bo'lmaydi"
+                  title={t("rooms.cannot_delete_assigned", "Bu xona guruhga biriktirilgan, o'chirib bo'lmaydi")}
                   className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 text-gray-300 cursor-not-allowed"
                 >
                   <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
@@ -284,7 +289,7 @@ export default function Rooms() {
             className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
-            Previous
+            {t("table.previous", "Previous")}
           </button>
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.ceil(rooms.length / 12) }, (_, i) => i + 1).map(p => (
@@ -306,7 +311,7 @@ export default function Rooms() {
             disabled={currentPage === Math.ceil(rooms.length / 12)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Next
+            {t("table.next", "Next")}
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
           </button>
         </div>
@@ -349,8 +354,8 @@ export default function Rooms() {
                   <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv xonalar</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) xonalar ro'yxati</p>
+                  <h2 className="text-lg font-extrabold text-slate-900">{t("rooms.archive_title", "Arxiv xonalar")}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{t("rooms.archive_sub", "Nofaol (inactive) xonalar ro'yxati")}</p>
                 </div>
               </div>
               <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -361,11 +366,11 @@ export default function Rooms() {
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-8 py-4">
               {arxivLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">{t("common.loading", "Yuklanmoqda...")}</div>
               ) : arxivRooms.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-300">
                   <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
-                  <p className="text-sm">Arxiv bo'sh</p>
+                  <p className="text-sm">{t("common.no_data", "Arxiv bo'sh")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -382,7 +387,7 @@ export default function Rooms() {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-bold transition-all active:scale-95 shrink-0"
                       >
                         <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
-                        Aktivlashtirish
+                        {t("rooms.activate", "Aktivlashtirish")}
                       </button>
                     </div>
                   ))}
@@ -393,7 +398,7 @@ export default function Rooms() {
             {/* Footer */}
             <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
               <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
-                Yopish
+                {t("common.close", "Yopish")}
               </button>
             </div>
           </div>

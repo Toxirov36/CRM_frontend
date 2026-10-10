@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "../components/theme-provider";
+import { useLanguage } from "../context/language-context";
+import LanguageDropdown from "../components/LanguageDropdown";
 import logoImg from "../images/image copy.png";
 import avatarNamuna from "../images/avatar_namuna.png";
 import {
@@ -9,6 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../components/ui/dialog";
 
 const WEEK_DAYS_UZ = {
   MONDAY: "Du",
@@ -30,10 +40,10 @@ const HOMEWORK_STATUS_MAP = {
   none: { label: "—", bg: "", text: "text-slate-400", border: "" },
 };
 
-const NAV_ITEMS = [
+const getNavItems = (t) => [
   {
     id: "bosh-sahifa",
-    label: "Bosh sahifa",
+    label: t("student.nav.home", "Bosh sahifa"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -43,7 +53,7 @@ const NAV_ITEMS = [
   },
   {
     id: "tolovlarim",
-    label: "To'lovlarim",
+    label: t("student.nav.payments", "To'lovlarim"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <rect x="1" y="4" width="22" height="16" rx="2" />
@@ -53,7 +63,7 @@ const NAV_ITEMS = [
   },
   {
     id: "guruhlarim",
-    label: "Guruhlarim",
+    label: t("student.nav.groups", "Guruhlarim"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -64,7 +74,7 @@ const NAV_ITEMS = [
   },
   {
     id: "korsatkichlarim",
-    label: "Ko'rsatkichlarim",
+    label: t("student.nav.metrics", "Ko'rsatkichlarim"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <line x1="18" y1="20" x2="18" y2="10" />
@@ -75,7 +85,7 @@ const NAV_ITEMS = [
   },
   {
     id: "reyting",
-    label: "Reyting",
+    label: t("student.nav.rating", "Reyting"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -84,7 +94,7 @@ const NAV_ITEMS = [
   },
   {
     id: "dokon",
-    label: "Do'kon",
+    label: t("student.nav.shop", "Do'kon"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <circle cx="9" cy="21" r="1" />
@@ -95,7 +105,7 @@ const NAV_ITEMS = [
   },
   {
     id: "qoshimcha-darslar",
-    label: "Qo'shimcha darslar",
+    label: t("student.nav.extra_lessons", "Qo'shimcha darslar"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
@@ -105,7 +115,7 @@ const NAV_ITEMS = [
   },
   {
     id: "sozlamalar",
-    label: "Sozlamalar",
+    label: t("nav.settings", "Sozlamalar"),
     svg: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="3" />
@@ -116,12 +126,19 @@ const NAV_ITEMS = [
 ];
 
 export default function StudentDashboard({ user, onLogout }) {
-  const [activePage, setActivePage] = useState("guruhlarim");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { t } = useLanguage();
+  const NAV_ITEMS = useMemo(() => getNavItems(t), [t]);
+
+  const pathParts = location.pathname.split("/").filter(Boolean);
+  const activePage = pathParts[0] || "guruhlarim";
+  const urlGroupId = pathParts[1] || null;
+
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("faol");
   const [search, setSearch] = useState("");
-  const [lang, setLang] = useState("O'zbekcha");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = useState([]);
@@ -140,6 +157,10 @@ export default function StudentDashboard({ user, onLogout }) {
   const [passLoading, setPassLoading] = useState(false);
   const [passError, setPassError] = useState("");
   const [passSuccess, setPassSuccess] = useState("");
+
+  // Teacher modal state
+  const [teacherModalOpen, setTeacherModalOpen] = useState(false);
+  const [teacherModalData, setTeacherModalData] = useState(null);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -348,37 +369,53 @@ export default function StudentDashboard({ user, onLogout }) {
     }
   }, [fetchLessonVideos, fetchHomework]);
 
+  // Sync selectedGroup with urlGroupId and fetch lessons if needed
+  useEffect(() => {
+    if (activePage === "guruhlarim" && urlGroupId) {
+      if (groups.length > 0) {
+        const found = groups.find(g => String(g.id || g.groupId) === String(urlGroupId));
+        if (found) {
+          if (!selectedGroup || (selectedGroup.id || selectedGroup.groupId) !== (found.id || found.groupId)) {
+            setSelectedGroup(found);
+            fetchLessons(found.id || found.groupId);
+          }
+        }
+      }
+    } else {
+      if (selectedGroup) {
+        setSelectedGroup(null);
+        setLessons([]);
+        setLessonSearch("");
+        setExpandedLessons({});
+        setLessonVideos({});
+        setActiveVideo(null);
+        setActiveLessonId(null);
+      }
+    }
+  }, [activePage, urlGroupId, groups, fetchLessons, selectedGroup]);
+
   const openGroupDetail = (group) => {
-    setSelectedGroup(group);
+    const groupId = group.id || group.groupId;
+    navigate(`/guruhlarim/${groupId}`);
     setHwStatusFilter("all");
     setViewMode("table");
-    const groupId = group.id || group.groupId;
-    fetchLessons(groupId);
   };
 
   const goBackToGroups = () => {
     if (viewMode === "video") {
       setViewMode("table");
     } else {
-      setSelectedGroup(null);
-      setLessons([]);
-      setLessonSearch("");
-      setExpandedLessons({});
-      setLessonVideos({});
-      setActiveVideo(null);
-      setActiveLessonId(null);
+      navigate("/guruhlarim");
     }
   };
 
   const filteredGroups = useMemo(() => {
     let filtered = groups;
 
-    if (filtered.some((g) => g.status)) {
-      if (activeTab === "faol") {
-        filtered = filtered.filter((g) => g.status === "active");
-      } else {
-        filtered = filtered.filter((g) => g.status !== "active");
-      }
+    if (activeTab === "faol") {
+      filtered = filtered.filter((g) => !g.isCompleted);
+    } else {
+      filtered = filtered.filter((g) => g.isCompleted);
     }
 
     if (search.trim()) {
@@ -472,7 +509,7 @@ export default function StudentDashboard({ user, onLogout }) {
               ? groups.filter((g) => g.status === "active").length
               : groups.length}
           </p>
-          <p className="text-xs text-slate-500 mt-1">Faol guruhlar</p>
+          <p className="text-xs text-slate-500 mt-1">{t("student.active_groups", "Faol guruhlar")}</p>
         </div>
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
@@ -483,7 +520,7 @@ export default function StudentDashboard({ user, onLogout }) {
           <p className="text-2xl font-bold text-slate-800">
             {new Set(groups.map((g) => g.courses?.name || g.course).filter(Boolean)).size}
           </p>
-          <p className="text-xs text-slate-500 mt-1">Kurslar</p>
+          <p className="text-xs text-slate-500 mt-1">{t("dashboard.stats.courses", "Kurslar")}</p>
         </div>
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center mb-3">
@@ -492,7 +529,7 @@ export default function StudentDashboard({ user, onLogout }) {
             </svg>
           </div>
           <p className="text-2xl font-bold text-slate-800">—</p>
-          <p className="text-xs text-slate-500 mt-1">Reyting</p>
+          <p className="text-xs text-slate-500 mt-1">{t("student.nav.rating", "Reyting")}</p>
         </div>
       </div>
     </div>
@@ -506,7 +543,7 @@ export default function StudentDashboard({ user, onLogout }) {
           <span className="text-[#be8b5b] scale-150">{item?.svg || "📦"}</span>
         </div>
         <h2 className="text-xl font-bold text-slate-800">{item?.label || "Sahifa"}</h2>
-        <p className="text-slate-500 text-sm">Bu sahifa hali ishlanmoqda...</p>
+        <p className="text-slate-500 text-sm">{t("group_details.coming_soon", "Bu sahifa hali ishlanmoqda...")}</p>
       </div>
     );
   };
@@ -531,77 +568,77 @@ export default function StudentDashboard({ user, onLogout }) {
     });
 
     return (
-      <div className="flex flex-col gap-6 h-full bg-[#fdfaf7] rounded-3xl p-6 shadow-sm border border-gray-100 overflow-hidden">
+      <div className="flex flex-col gap-6 h-full bg-[#fdfaf7] dark:bg-[#111c32] rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
           <div>
-            <label className="block text-slate-500 text-xs font-bold mb-2 uppercase tracking-wider">
-              Uy vazifa statusi
+            <label className="block text-slate-500 dark:text-slate-400 text-xs font-bold mb-2 uppercase tracking-wider">
+              {t("student.homework", "Uy vazifasi")} {t("common.status", "statusi")}
             </label>
             <div>
               <Select value={hwStatusFilter} onValueChange={setHwStatusFilter}>
-                <SelectTrigger className="w-[180px] h-10 bg-white border border-gray-200 rounded-xl px-4 text-sm font-semibold text-slate-700 outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 data-[state=open]:border-[#ebd2b8] data-[state=open]:ring-2 data-[state=open]:ring-[#ebd2b8]/20 transition-all shadow-sm cursor-pointer">
-                  <SelectValue placeholder="Barchasi" />
+                <SelectTrigger className="w-[180px] h-10 bg-white dark:bg-[#0B1326] border border-gray-200 dark:border-gray-750 rounded-xl px-4 text-sm font-semibold text-slate-700 dark:text-white outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 data-[state=open]:border-[#ebd2b8] data-[state=open]:ring-2 data-[state=open]:ring-[#ebd2b8]/20 transition-all shadow-sm cursor-pointer">
+                  <SelectValue placeholder={t("common.all", "Barchasi")} />
                 </SelectTrigger>
-                <SelectContent position="popper" className="bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-1">
-                  <SelectItem value="all" className="hover:bg-slate-50 cursor-pointer py-2 px-3 rounded-lg">Barchasi</SelectItem>
-                  <SelectItem value="completed" className="hover:bg-slate-50 cursor-pointer py-2 px-3 rounded-lg">Qabul qilingan</SelectItem>
-                  <SelectItem value="pending" className="hover:bg-slate-50 cursor-pointer py-2 px-3 rounded-lg">Berilmagan</SelectItem>
-                  <SelectItem value="rejected" className="hover:bg-slate-50 cursor-pointer py-2 px-3 rounded-lg">Qaytarilgan</SelectItem>
-                  <SelectItem value="failed" className="hover:bg-slate-50 cursor-pointer py-2 px-3 rounded-lg">Bajarilmagan</SelectItem>
-                  <SelectItem value="submitted" className="hover:bg-slate-50 cursor-pointer py-2 px-3 rounded-lg">Kutayotganlar</SelectItem>
+                <SelectContent position="popper" className="bg-white dark:bg-[#111c32] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 p-1">
+                  <SelectItem value="all" className="hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white cursor-pointer py-2 px-3 rounded-lg">{t("common.all", "Barchasi")}</SelectItem>
+                  <SelectItem value="completed" className="hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white cursor-pointer py-2 px-3 rounded-lg">{t("student.status.completed", "Qabul qilingan")}</SelectItem>
+                  <SelectItem value="pending" className="hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white cursor-pointer py-2 px-3 rounded-lg">{t("student.status.pending", "Berilmagan")}</SelectItem>
+                  <SelectItem value="rejected" className="hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white cursor-pointer py-2 px-3 rounded-lg">{t("student.status.rejected", "Qaytarilgan")}</SelectItem>
+                  <SelectItem value="failed" className="hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white cursor-pointer py-2 px-3 rounded-lg">{t("student.status.failed", "Bajarilmagan")}</SelectItem>
+                  <SelectItem value="submitted" className="hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white cursor-pointer py-2 px-3 rounded-lg">{t("student.status.submitted", "Kutayotganlar")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="bg-white dark:bg-[#0B1326] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="overflow-x-auto overflow-y-auto flex-1">
             <table className="w-full text-sm text-left">
-              <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                <tr className="border-b border-gray-100">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mavzular</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Video</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Uyga vazifa Holati</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Uyga vazifa tugash vaqti</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Dars sanasi</th>
+              <thead className="sticky top-0 bg-white dark:bg-[#0B1326] z-10 shadow-sm">
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t("group_details.topic", "Mavzular")}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">{t("group_details.videos", "Video")}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">{t("student.homework", "Uyga vazifa")} {t("common.status", "Holati")}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">{t("group_details.deadline", "Uyga vazifa tugash vaqti")}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t("group_details.lesson_date", "Dars sanasi")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {lessonsLoading ? (
                   <tr>
                     <td colSpan={5} className="text-center py-16">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-8 h-8 border-3 border-slate-200 border-t-[#ebd2b8] rounded-full animate-spin" />
-                        <span className="text-sm text-slate-400">Yuklanmoqda...</span>
+                        <span className="text-sm text-slate-400">{t("common.loading", "Yuklanmoqda...")}</span>
                       </div>
                     </td>
                   </tr>
                 ) : tableLessons.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-16">
-                      <p className="text-slate-400 text-sm font-medium">Darslar topilmadi</p>
+                      <p className="text-slate-400 text-sm font-medium">{t("common.no_data", "Darslar topilmadi")}</p>
                     </td>
                   </tr>
                 ) : (
                   tableLessons.map((lesson) => {
-                    let statusLabel = "Berilmagan";
+                    let statusLabel = t("student.status.pending", "Berilmagan");
                     let badgeClass = "bg-[#6c757d] text-white"; // default gray badge
                     
                     if (lesson.homeworkStatus === "completed" || lesson.homeworkStatus === "checked") {
-                      statusLabel = "Qabul qilingan";
+                      statusLabel = t("student.status.completed", "Qabul qilingan");
                       badgeClass = "bg-[#28a745] text-white"; // green badge
                     } else if (lesson.homeworkStatus === "submitted") {
-                      statusLabel = "Kutayotganlar";
+                      statusLabel = t("student.status.submitted", "Kutayotganlar");
                       badgeClass = "bg-[#2196F3] text-white"; // blue badge
                     } else if (lesson.homeworkStatus === "rejected") {
-                      statusLabel = "Qaytarilgan";
+                      statusLabel = t("student.status.rejected", "Qaytarilgan");
                       badgeClass = "bg-[#dc3545] text-white"; // red badge
                     } else if (lesson.homeworkStatus === "failed") {
-                      statusLabel = "Bajarilmagan";
+                      statusLabel = t("student.status.failed", "Bajarilmagan");
                       badgeClass = "bg-[#dc3545] text-white"; // red badge
                     } else if (lesson.homeworkStatus === "pending") {
-                      statusLabel = "Berilmagan";
+                      statusLabel = t("student.status.pending", "Berilmagan");
                       badgeClass = "bg-[#6c757d] text-white"; // default gray badge
                     } else if (lesson.homeworkStatus === "none") {
                       statusLabel = "—";
@@ -635,9 +672,9 @@ export default function StudentDashboard({ user, onLogout }) {
                       <tr
                         key={lesson.id}
                         onClick={handleRowClick}
-                        className="hover:bg-[#fcf8f5] border-b border-gray-100 transition-colors cursor-pointer"
+                        className="hover:bg-[#fcf8f5] dark:hover:bg-white/5 border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer"
                       >
-                        <td className="px-6 py-4 font-semibold text-slate-800">
+                        <td className="px-6 py-4 font-semibold text-slate-800 dark:text-white">
                           {lesson.topic}
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -651,13 +688,13 @@ export default function StudentDashboard({ user, onLogout }) {
                               {statusLabel}
                             </span>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-slate-400 dark:text-slate-500">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-center text-slate-600 font-semibold">
+                        <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400 font-semibold">
                           {lesson.homeworkDeadline ? formatDate(lesson.homeworkDeadline) : "—"}
                         </td>
-                        <td className="px-6 py-4 text-slate-700 font-semibold">
+                        <td className="px-6 py-4 text-slate-700 dark:text-slate-300 font-semibold">
                           {formatDate(lesson.created_at)}
                         </td>
                       </tr>
@@ -682,7 +719,7 @@ export default function StudentDashboard({ user, onLogout }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-0 overflow-hidden items-stretch">
         {/* Left Side: Video Player & Homework */}
         <div className="lg:col-span-8 h-full overflow-y-auto flex flex-col gap-5 pr-1 pb-6 min-h-0">
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm aspect-video relative shrink-0 flex items-center justify-center">
+          <div className="bg-white dark:bg-[#111c32] rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm aspect-video relative shrink-0 flex items-center justify-center">
             {activeVideo && !videoLoadError ? (
               <video
                 key={activeVideo.id}
@@ -693,18 +730,18 @@ export default function StudentDashboard({ user, onLogout }) {
                 onError={() => setVideoLoadError(true)}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center text-center p-8 bg-white">
+              <div className="flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-[#111c32]">
                 <img
                   src={logoImg}
                   alt="ApexEdu Logo"
                   className="w-56 h-auto mb-5 object-contain no-revert-logo"
                 />
-                <h3 className="text-xl font-bold text-slate-800">Video mavjud emas</h3>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Video mavjud emas</h3>
               </div>
             )}
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm shrink-0">
-            <h3 className="font-bold text-slate-800 text-sm">
+          <div className="bg-white dark:bg-[#111c32] rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm shrink-0">
+            <h3 className="font-bold text-slate-800 dark:text-white text-sm">
               {(() => {
                 const topic = lessons.find(l => l.id === activeLessonId)?.topic;
                 const videoName = activeVideo ? (activeVideo.name || activeVideo.file) : "";
@@ -715,9 +752,9 @@ export default function StudentDashboard({ user, onLogout }) {
 
           {/* Homework Section (Only shown if homework is not null) */}
           {activeHomeworkData?.homework && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col gap-4">
+            <div className="bg-white dark:bg-[#111c32] rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm flex flex-col gap-4">
               {/* Tab Header */}
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
                 <div className="flex gap-6">
                   <button className="text-sm font-bold text-[#be8b5b] border-b-2 border-[#be8b5b] pb-3 -mb-[14px]">
                     Vazifalar
@@ -734,10 +771,10 @@ export default function StudentDashboard({ user, onLogout }) {
               <div className="space-y-4 mt-3">
                 
                 {/* 1. Uyga vazifa Card */}
-                <div className="bg-[#fdf8f4] border border-[#f5eae1] rounded-2xl p-5 relative">
+                <div className="bg-[#fdf8f4] dark:bg-[#0B1326] border border-[#f5eae1] dark:border-gray-700 rounded-2xl p-5 relative">
                   <div className="flex items-center justify-between gap-4 mb-3 w-full">
                     <div className="flex-1 text-left">
-                      <h4 className="font-bold text-slate-800 text-sm">Uyga vazifa</h4>
+                      <h4 className="font-bold text-slate-800 dark:text-white text-sm">Uyga vazifa</h4>
                     </div>
                     <div className="flex-none bg-[#dc3545] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
                       <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -750,13 +787,13 @@ export default function StudentDashboard({ user, onLogout }) {
                       })()}
                     </div>
                     <div className="flex-1 text-right">
-                      <span className="text-xs text-slate-500 font-bold">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">
                         Fayllar soni: {activeHomeworkData.homework.file ? 1 : 0}
                       </span>
                     </div>
                   </div>
                   
-                  <p className="text-slate-600 text-sm font-semibold mb-4 leading-relaxed">
+                  <p className="text-slate-600 dark:text-slate-300 text-sm font-semibold mb-4 leading-relaxed">
                     {activeHomeworkData.homework.title}
                   </p>
 
@@ -765,7 +802,7 @@ export default function StudentDashboard({ user, onLogout }) {
                       href={`/files/files/${activeHomeworkData.homework.file}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 bg-white px-4 py-3 border border-gray-200 rounded-xl hover:border-[#ebd2b8] hover:shadow-sm transition-all text-slate-700 font-semibold text-xs"
+                      className="inline-flex items-center gap-3 bg-white dark:bg-[#111c32] px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-[#ebd2b8] hover:shadow-sm transition-all text-slate-700 dark:text-slate-300 font-semibold text-xs"
                     >
                       <svg width="18" height="18" fill="none" stroke="#be8b5b" strokeWidth="2.2" viewBox="0 0 24 24" className="shrink-0">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -774,22 +811,22 @@ export default function StudentDashboard({ user, onLogout }) {
                     </a>
                   )}
 
-                  <div className="text-right text-slate-400 text-xs font-semibold mt-2">
+                  <div className="text-right text-slate-400 dark:text-slate-500 text-xs font-semibold mt-2">
                     {formatHomeworkDate(activeHomeworkData.homework.created_at)}
                   </div>
                 </div>
 
                 {/* 2. Mening jo'natmalarim Card OR Submit Form */}
                 {activeHomeworkData.answer ? (
-                  <div className="bg-[#fbfbfb] border border-gray-200 rounded-2xl p-5">
+                  <div className="bg-[#fbfbfb] dark:bg-[#0B1326] border border-gray-200 dark:border-gray-700 rounded-2xl p-5">
                     <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-                      <h4 className="font-bold text-slate-800 text-sm">Mening jo'natmalarim</h4>
-                      <span className="text-xs text-slate-500 font-bold ml-auto">
+                      <h4 className="font-bold text-slate-800 dark:text-white text-sm">Mening jo'natmalarim</h4>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-bold ml-auto">
                         Fayllar soni: {activeHomeworkData.answer.file ? 1 : 0}
                       </span>
                     </div>
 
-                    <p className="text-slate-600 text-sm font-semibold mb-4 leading-relaxed">
+                    <p className="text-slate-600 dark:text-slate-300 text-sm font-semibold mb-4 leading-relaxed">
                       {activeHomeworkData.answer.title || "—"}
                     </p>
 
@@ -798,7 +835,7 @@ export default function StudentDashboard({ user, onLogout }) {
                         href={`/files/homeworkAnswers/${activeHomeworkData.answer.file}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-3 bg-white px-4 py-3 border border-gray-200 rounded-xl hover:border-[#ebd2b8] hover:shadow-sm transition-all text-slate-700 font-semibold text-xs"
+                        className="inline-flex items-center gap-3 bg-white dark:bg-[#111c32] px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-[#ebd2b8] hover:shadow-sm transition-all text-slate-700 dark:text-slate-300 font-semibold text-xs"
                       >
                         <svg width="18" height="18" fill="none" stroke="#be8b5b" strokeWidth="2.2" viewBox="0 0 24 24" className="shrink-0">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -807,7 +844,7 @@ export default function StudentDashboard({ user, onLogout }) {
                       </a>
                     )}
 
-                    <div className="text-right text-slate-400 text-xs font-semibold mt-2">
+                    <div className="text-right text-slate-400 dark:text-slate-500 text-xs font-semibold mt-2">
                       {formatHomeworkDate(activeHomeworkData.answer.created_at)}
                     </div>
                   </div>
@@ -820,9 +857,9 @@ export default function StudentDashboard({ user, onLogout }) {
 
                 {/* 3. O'qituvchi izohi Card */}
                 {activeHomeworkData.result && (
-                  <div className="bg-[#fbfcfb] border border-green-200 rounded-2xl p-5">
+                  <div className="bg-[#fbfcfb] dark:bg-[#0B1326] border border-green-200 dark:border-green-800 rounded-2xl p-5">
                     <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-                      <h4 className="font-bold text-slate-800 text-sm">O'qituvchi izohi</h4>
+                      <h4 className="font-bold text-slate-800 dark:text-white text-sm">O'qituvchi izohi</h4>
                       <span className={`text-xs font-extrabold ml-auto ${
                         activeHomeworkData.result.homeworkStatus === "completed" || activeHomeworkData.result.homeworkStatus === "checked"
                           ? "text-[#28a745]"
@@ -842,19 +879,19 @@ export default function StudentDashboard({ user, onLogout }) {
                       </span>
                     </div>
 
-                    <p className="text-slate-600 text-sm font-semibold mb-4 leading-relaxed">
+                    <p className="text-slate-600 dark:text-slate-300 text-sm font-semibold mb-4 leading-relaxed">
                       {activeHomeworkData.result.title}
                     </p>
 
                     {(activeHomeworkData.result.teachers || activeHomeworkData.result.users) && (
-                      <p className="text-slate-500 text-xs font-bold mb-2">
+                      <p className="text-slate-500 dark:text-slate-400 text-xs font-bold mb-2">
                         Tekshiruvchi: {activeHomeworkData.result.teachers 
                           ? `${activeHomeworkData.result.teachers.first_name} ${activeHomeworkData.result.teachers.last_name}` 
                           : `${activeHomeworkData.result.users.first_name} ${activeHomeworkData.result.users.last_name}`}
                       </p>
                     )}
 
-                    <div className="text-right text-slate-400 text-xs font-semibold mt-2">
+                    <div className="text-right text-slate-400 dark:text-slate-550 text-xs font-semibold mt-2">
                       {formatHomeworkDate(activeHomeworkData.result.created_at)}
                     </div>
                   </div>
@@ -873,8 +910,8 @@ export default function StudentDashboard({ user, onLogout }) {
               <span className="text-sm text-slate-400">Yuklanmoqda...</span>
             </div>
           ) : filteredLessons.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
-              <p className="text-slate-400 text-sm font-medium">Darslar topilmadi</p>
+            <div className="bg-white dark:bg-[#111c32] rounded-2xl border border-gray-200 dark:border-gray-800 p-8 text-center shadow-sm">
+              <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Darslar topilmadi</p>
             </div>
           ) : (
             filteredLessons.map((lesson) => {
@@ -912,7 +949,7 @@ export default function StudentDashboard({ user, onLogout }) {
               return (
                 <div
                   key={lesson.id}
-                  className={`bg-[#f5efe9] border border-[#f5eae1] rounded-2xl p-4 shadow-sm transition-all duration-200 shrink-0 ${
+                  className={`bg-[#f5efe9] dark:bg-[#111c32] border border-[#f5eae1] dark:border-gray-800 rounded-2xl p-4 shadow-sm transition-all duration-200 shrink-0 ${
                     isExpanded && hasVideos ? "flex flex-col gap-3" : ""
                   }`}
                 >
@@ -922,14 +959,14 @@ export default function StudentDashboard({ user, onLogout }) {
                     className={`flex items-center justify-between transition-colors select-none cursor-pointer p-2 ${
                       isExpanded
                         ? "bg-[#ebd2b8] rounded-xl p-4 w-full"
-                        : "hover:bg-black/5 rounded-xl p-2 w-full"
+                        : "hover:bg-black/5 dark:hover:bg-white/5 rounded-xl p-2 w-full"
                     }`}
                   >
                     <div className="flex-1 min-w-0 mr-3">
-                      <h4 className="font-bold text-slate-900 text-sm leading-snug truncate">
+                      <h4 className={`font-bold text-sm leading-snug truncate ${isExpanded ? 'text-slate-905' : 'text-slate-900 dark:text-white'}`}>
                         {lesson.topic}
                       </h4>
-                      <p className="text-slate-500 text-xs mt-1 font-medium">
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">
                         Dars sanasi: {formatDate(lesson.created_at)}
                       </p>
                     </div>
@@ -973,7 +1010,7 @@ export default function StudentDashboard({ user, onLogout }) {
                               className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl text-left text-sm font-semibold transition-all shadow-sm ${
                                 isVideoActive
                                   ? "bg-[#ebd2b8] text-slate-900"
-                                  : "bg-[#ebd2b8]/40 hover:bg-[#ebd2b8]/60 text-slate-700"
+                                  : "bg-[#ebd2b8]/20 hover:bg-[#ebd2b8]/35 text-slate-700 dark:text-slate-300 border border-[#f5eae1]/10 dark:border-gray-700/50"
                               }`}
                             >
                               {isVideoActive ? (
@@ -982,7 +1019,7 @@ export default function StudentDashboard({ user, onLogout }) {
                                   <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
                                 </svg>
                               ) : (
-                                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" className="shrink-0 text-slate-600">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" className="shrink-0 text-slate-600 dark:text-slate-400">
                                   <circle cx="12" cy="12" r="10" />
                                 </svg>
                               )}
@@ -1014,7 +1051,7 @@ export default function StudentDashboard({ user, onLogout }) {
                             className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl text-left text-sm font-semibold transition-all shadow-sm ${
                               isVideoActive
                                 ? "bg-[#ebd2b8] text-slate-900"
-                                : "bg-[#ebd2b8]/40 hover:bg-[#ebd2b8]/60 text-slate-700"
+                                : "bg-[#ebd2b8]/20 hover:bg-[#ebd2b8]/35 text-slate-700 dark:text-slate-300 border border-[#f5eae1]/10 dark:border-gray-700/50"
                             }`}
                           >
                             {isVideoActive ? (
@@ -1023,7 +1060,7 @@ export default function StudentDashboard({ user, onLogout }) {
                                 <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
                               </svg>
                             ) : (
-                              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" className="shrink-0 text-slate-600">
+                              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" className="shrink-0 text-slate-600 dark:text-slate-400">
                                 <circle cx="12" cy="12" r="10" />
                               </svg>
                             )}
@@ -1115,73 +1152,73 @@ export default function StudentDashboard({ user, onLogout }) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Shaxsiy ma'lumotlar Card */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <h3 className="text-xl font-black text-slate-800 mb-6">Shaxsiy ma'lumotlar</h3>
+        <div className="bg-white dark:bg-[#111c32] rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm">
+          <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6">Shaxsiy ma'lumotlar</h3>
           
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             {/* Photos section */}
             <div className="flex gap-6 items-start flex-wrap shrink-0">
               {/* Namuna Photo */}
               <div className="flex flex-col items-center">
-                <div className="w-32 h-40 border border-gray-200 rounded-lg overflow-hidden flex flex-col justify-between p-1 bg-white shadow-sm">
+                <div className="w-32 h-40 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col justify-between p-1 bg-white dark:bg-[#0B1326] shadow-sm">
                   <img src={avatarNamuna} alt="Namuna" className="w-full h-32 object-cover rounded" />
-                  <span className="text-[10px] text-gray-400 font-bold text-center uppercase tracking-wide">Namuna</span>
+                  <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold text-center uppercase tracking-wide">Namuna</span>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2 text-center max-w-[140px] leading-tight">
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-2 text-center max-w-[140px] leading-tight">
                   500x500 o'lcham, JPEG, JPG, PNG format, maksimum 2MB
                 </p>
               </div>
 
               {/* Student Photo */}
               <div className="flex flex-col items-center">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-[#be8b5b] shadow-sm bg-gray-50 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-[#be8b5b] shadow-sm bg-gray-50 dark:bg-[#0B1326] flex items-center justify-center">
                   {profile?.photo ? (
                     <img src={profile.photo} alt="Student avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-3xl font-extrabold text-slate-400">
+                    <span className="text-3xl font-extrabold text-slate-400 dark:text-slate-500">
                       {profile?.first_name?.charAt(0).toUpperCase() || "S"}
                     </span>
                   )}
                 </div>
-                <span className="mt-4 px-3 py-1 rounded-full text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200">
+                <span className="mt-4 px-3 py-1 rounded-full text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                   Talabga mos
                 </span>
               </div>
             </div>
 
             {/* Info grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 flex-1 w-full lg:border-l lg:pl-8 lg:border-gray-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 flex-1 w-full lg:border-l lg:pl-8 lg:border-gray-100 dark:lg:border-gray-800">
               <div className="space-y-1">
-                <span className="text-xs text-gray-400 font-semibold">Ism</span>
-                <p className="text-sm font-extrabold text-slate-800">{profile?.first_name || "—"}</p>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold">Ism</span>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-white">{profile?.first_name || "—"}</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs text-gray-400 font-semibold">Familiya</span>
-                <p className="text-sm font-extrabold text-slate-800">{profile?.last_name || "—"}</p>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold">Familiya</span>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-white">{profile?.last_name || "—"}</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs text-gray-400 font-semibold">Telefon raqam</span>
-                <p className="text-sm font-extrabold text-slate-800">{profile?.phone || "—"}</p>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold">Telefon raqam</span>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-white">{profile?.phone || "—"}</p>
                 {profile?.phone && (
-                  <p className="text-sm font-extrabold text-slate-800">{profile.phone}</p>
+                  <p className="text-sm font-extrabold text-slate-800 dark:text-white">{profile.phone}</p>
                 )}
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs text-gray-400 font-semibold">Tug'ilgan sana</span>
-                <p className="text-sm font-extrabold text-slate-800">{birthDateFormatted}</p>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold">Tug'ilgan sana</span>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-white">{birthDateFormatted}</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs text-gray-400 font-semibold">Jinsi</span>
-                <p className="text-sm font-extrabold text-slate-800">Male</p>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold">Jinsi</span>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-white">Male</p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs text-gray-400 font-semibold">HH ID</span>
-                <p className="text-sm font-extrabold text-slate-800">{profile?.id || "—"}</p>
+                <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold">HH ID</span>
+                <p className="text-sm font-extrabold text-slate-800 dark:text-white">{profile?.id || "—"}</p>
               </div>
             </div>
           </div>
@@ -1190,15 +1227,15 @@ export default function StudentDashboard({ user, onLogout }) {
         {/* Action cards row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Kirish card */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 min-h-[120px]">
-            <h4 className="font-bold text-slate-800 text-sm">Kirish</h4>
-            <p className="text-slate-500 font-bold text-sm mt-auto">{profile?.id || "—"}</p>
+          <div className="bg-white dark:bg-[#111c32] rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col gap-3 min-h-[120px]">
+            <h4 className="font-bold text-slate-800 dark:text-white text-sm">Kirish</h4>
+            <p className="text-slate-500 dark:text-slate-400 font-bold text-sm mt-auto">{profile?.id || "—"}</p>
           </div>
 
           {/* Parol card */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 min-h-[120px] relative">
+          <div className="bg-white dark:bg-[#111c32] rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col gap-3 min-h-[120px] relative">
             <div className="flex items-center justify-between">
-              <h4 className="font-bold text-slate-800 text-sm">Parol</h4>
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm">Parol</h4>
               <button
                 onClick={() => {
                   setIsPasswordModalOpen(true);
@@ -1208,21 +1245,21 @@ export default function StudentDashboard({ user, onLogout }) {
                   setNewPassword("");
                   setConfirmPassword("");
                 }}
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors"
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 transition-colors"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
               </button>
             </div>
-            <p className="text-slate-800 font-bold text-lg tracking-widest mt-auto">••••••••</p>
+            <p className="text-slate-800 dark:text-white font-bold text-lg tracking-widest mt-auto">••••••••</p>
           </div>
 
           {/* Bildirishnoma sozlamalari card */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 min-h-[120px]">
+          <div className="bg-white dark:bg-[#111c32] rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col gap-3 min-h-[120px]">
             <div className="flex items-center justify-between">
-              <h4 className="font-bold text-slate-800 text-sm">Bildirishnoma sozlamalari</h4>
-              <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm">Bildirishnoma sozlamalari</h4>
+              <button className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 transition-colors">
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
@@ -1376,9 +1413,10 @@ export default function StudentDashboard({ user, onLogout }) {
    *  GROUPS LIST PAGE
    * ═══════════════════════════════════════════════ */
   const renderGroups = () => (
+    <>
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-slate-800">Guruhlarim</h2>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Guruhlarim</h2>
       </div>
 
       <div className="flex items-center gap-6 mb-6">
@@ -1386,8 +1424,8 @@ export default function StudentDashboard({ user, onLogout }) {
           onClick={() => setActiveTab("faol")}
           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
             activeTab === "faol"
-              ? "border-[#ebd2b8] text-slate-800"
-              : "border-transparent text-slate-400 hover:text-slate-600"
+              ? "border-[#ebd2b8] text-slate-800 dark:text-white"
+              : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
           Faol
@@ -1396,8 +1434,8 @@ export default function StudentDashboard({ user, onLogout }) {
           onClick={() => setActiveTab("tugagan")}
           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
             activeTab === "tugagan"
-              ? "border-[#ebd2b8] text-slate-800"
-              : "border-transparent text-slate-400 hover:text-slate-600"
+              ? "border-[#ebd2b8] text-slate-800 dark:text-white"
+              : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
           Tugagan
@@ -1414,21 +1452,24 @@ export default function StudentDashboard({ user, onLogout }) {
             placeholder="Guruh qidirish..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#111c32] dark:text-white outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 transition-all dark:placeholder-slate-500"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#111c32] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-t border-b border-gray-200 bg-white">
-                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800">#</th>
-                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800">Guruh nomi</th>
-                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800">Yo'nalishi</th>
-                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800">O'qituvchi</th>
-                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800">Boshlash vaqti</th>
+              <tr className="border-t border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111c32]">
+                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">#</th>
+                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Guruh nomi</th>
+                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Yo'nalishi</th>
+                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">O'qituvchi</th>
+                <th className="text-left px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Boshlash vaqti</th>
+                {activeTab === "tugagan" && (
+                  <th className="text-left px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-300 uppercase">Tugagan sana</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -1472,17 +1513,33 @@ export default function StudentDashboard({ user, onLogout }) {
                     <tr
                       key={groupId}
                       onClick={() => openGroupDetail(g)}
-                      className="hover:bg-slate-50/60 border-b border-gray-100 transition-colors cursor-pointer"
+                      className="hover:bg-slate-50/60 dark:hover:bg-white/5 border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer"
                     >
-                      <td className="px-5 py-4 text-slate-500 font-medium">{i + 1}</td>
-                      <td className="px-5 py-4 font-medium text-slate-800">{groupName}</td>
-                      <td className="px-5 py-4 font-medium text-slate-800">{courseName}</td>
+                      <td className="px-5 py-4 text-slate-500 dark:text-slate-400 font-medium">{i + 1}</td>
+                      <td className="px-5 py-4 font-medium text-slate-800 dark:text-white">{groupName}</td>
+                      <td className="px-5 py-4 font-medium text-slate-800 dark:text-slate-300">{courseName}</td>
                       <td className="px-5 py-4">
-                        <span className="w-6 h-6 inline-flex items-center justify-center text-white text-xs font-extrabold rounded-full bg-[#be8b5b]">
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTeacherModalData({
+                              groupName: groupName,
+                              course: courseName,
+                              teachers: g.teachers || [],
+                              weekDays: g.weekDays || g.week_day || [],
+                              startTime: g.startTime || g.start_time || "",
+                            });
+                            setTeacherModalOpen(true);
+                          }}
+                          className="w-6 h-6 inline-flex items-center justify-center text-white text-xs font-extrabold rounded-full bg-[#be8b5b] cursor-pointer hover:bg-[#a87a4e] hover:scale-110 transition-all duration-200"
+                        >
                           {teacherCount}
                         </span>
                       </td>
-                      <td className="px-5 py-4 font-medium text-slate-800">{formatDate(startDate)}</td>
+                      <td className="px-5 py-4 font-medium text-slate-800 dark:text-slate-300">{formatDate(startDate)}</td>
+                      {activeTab === "tugagan" && (
+                        <td className="px-5 py-4 font-medium text-slate-800 dark:text-slate-300">{g.endDate ? formatDate(g.endDate) : "-"}</td>
+                      )}
                     </tr>
                   );
                 })
@@ -1492,19 +1549,73 @@ export default function StudentDashboard({ user, onLogout }) {
         </div>
       </div>
     </div>
+
+      {/* Teacher Details Modal */}
+      <Dialog open={teacherModalOpen} onOpenChange={setTeacherModalOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto dark:bg-[#111c32] dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white">
+              {teacherModalData?.groupName}
+            </DialogTitle>
+            <DialogDescription className="text-base font-semibold text-slate-600">
+              {teacherModalData?.course}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left px-3 py-2.5 text-xs font-bold text-[#be8b5b]">O'qituvchi</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-bold text-[#be8b5b]">Roli</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-bold text-[#be8b5b]">Dars kunlari</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-bold text-[#be8b5b]">Dars vaqti</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {teacherModalData?.teachers?.length > 0 ? (
+                  teacherModalData.teachers.map((teacher, idx) => (
+                    <tr key={teacher.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-white/5 transition-colors">
+                      <td className="px-3 py-3 font-medium text-slate-800 dark:text-white">
+                        {teacher.name}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
+                        {teacher.role}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
+                        {(teacherModalData.weekDays || []).map(d => t(`student.days.${d}`, WEEK_DAYS_UZ[d] || d)).join(", ")}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
+                        {teacherModalData.startTime || "—"}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-slate-400">
+                      O'qituvchilar topilmadi
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 
   /* ═══════════════════════════════════════════════
    *  MAIN LAYOUT
    * ═══════════════════════════════════════════════ */
   return (
-    <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-[#0B1326] font-sans overflow-hidden">
       {/* Sidebar */}
-      <div className="w-60 bg-white border-r border-gray-100 flex flex-col h-full shadow-sm">
+      <div className="w-60 bg-white dark:bg-[#0f1a2e] border-r border-gray-100 dark:border-gray-800 flex flex-col h-full shadow-sm">
         {/* Logo */}
-        <div className="h-14 flex items-center px-5 border-b border-gray-100 shrink-0">
+        <div className="h-14 flex items-center px-5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <span className="font-black text-[22px] tracking-tight select-none">
-            <span className="text-[#0E3563]">Apex</span>
+            <span className="text-[#0E3563] dark:text-white">Apex</span>
             <span className="text-[#3FA1DF]">Edu</span>
           </span>
         </div>
@@ -1517,23 +1628,16 @@ export default function StudentDashboard({ user, onLogout }) {
               <button
                 key={item.id}
                 onClick={() => {
-                  setActivePage(item.id);
-                  setSelectedGroup(null);
-                  setLessons([]);
-                  setLessonSearch("");
-                  setExpandedLessons({});
-                  setLessonVideos({});
-                  setActiveVideo(null);
-                  setActiveLessonId(null);
+                  navigate(`/${item.id}`);
                   setViewMode("table");
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? "bg-[#ebd2b8] text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
-                <span className={isActive ? "text-slate-900" : "text-slate-400"}>{item.svg}</span>
+                <span className={isActive ? "text-slate-900" : "text-slate-400 dark:text-slate-500"}>{item.svg}</span>
                 <span className="flex-1 text-left">{item.label}</span>
               </button>
             );
@@ -1541,16 +1645,16 @@ export default function StudentDashboard({ user, onLogout }) {
         </nav>
 
         {/* Profile card at bottom */}
-        <div className="p-3 shrink-0 mt-auto border-t border-gray-100">
+        <div className="p-3 shrink-0 mt-auto border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-3 px-2 py-2">
             <div className="w-10 h-10 rounded-xl bg-[#ebd2b8] flex items-center justify-center text-slate-900 font-bold text-sm shadow-sm">
               {user?.first_name?.charAt(0).toUpperCase() ?? "S"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">
+              <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
                 {user?.first_name} {user?.last_name}
               </p>
-              <p className="text-xs text-slate-400">Talaba</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Talaba</p>
             </div>
           </div>
         </div>
@@ -1559,13 +1663,13 @@ export default function StudentDashboard({ user, onLogout }) {
       {/* Main Content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Topbar */}
-        <header className="h-14 bg-white border-b border-gray-100 flex items-center px-6 shadow-sm relative shrink-0">
+        <header className="h-14 bg-white dark:bg-[#0f1a2e] border-b border-gray-100 dark:border-gray-800 flex items-center px-6 shadow-sm relative shrink-0">
           {/* Back button + Group name OR page title */}
           {activePage === "guruhlarim" && selectedGroup ? (
             <div className="flex items-center gap-3">
               <button
                 onClick={goBackToGroups}
-                className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-100 flex items-center justify-center text-orange-600 transition-colors"
+                className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 flex items-center justify-center text-orange-600 transition-colors"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path d="M15 18l-6-6 6-6" />
@@ -1573,7 +1677,7 @@ export default function StudentDashboard({ user, onLogout }) {
               </button>
             </div>
           ) : (
-            <span className="font-semibold text-slate-700 text-sm">{getTopbarTitle()}</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 text-sm">{getTopbarTitle()}</span>
           )}
 
           <div className="flex-1" />
@@ -1589,27 +1693,19 @@ export default function StudentDashboard({ user, onLogout }) {
                 placeholder="Qidirish..."
                 value={lessonSearch}
                 onChange={(e) => setLessonSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 transition-all w-48"
+                className="pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#111c32] dark:text-white outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 transition-all w-48"
               />
             </div>
           )}
 
           {/* Right actions */}
           <div className="flex items-center gap-3">
-            <button
-              className="flex items-center gap-1.5 text-sm text-slate-600 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors"
-              onClick={() => setLang((l) => (l === "O'zbekcha" ? "English" : "O'zbekcha"))}
-            >
-              {lang}
-              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
+            <LanguageDropdown />
 
             <div className="relative">
               <button
                 onClick={() => setShowNotificationsMenu((s) => !s)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-50 border border-gray-200 relative transition-colors cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 border border-gray-200 dark:border-gray-700 relative transition-colors cursor-pointer dark:text-slate-300"
               >
                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
@@ -1622,19 +1718,19 @@ export default function StudentDashboard({ user, onLogout }) {
               {showNotificationsMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotificationsMenu(false)} />
-                  <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl border border-gray-100 shadow-2xl z-50 py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                      <h4 className="font-bold text-slate-800 text-sm">Bildirishnomalar</h4>
+                  <div className="absolute right-0 top-11 w-80 bg-white dark:bg-[#111c32] rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xl z-50 py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                      <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t("student.notifications", "Bildirishnomalar")}</h4>
                       {unreadCount > 0 && (
                         <span className="text-[10px] bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-bold">
-                          {unreadCount} ta yangi
+                          {unreadCount} {t("topbar.new_badge", "ta yangi")}
                         </span>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                       {notifications.length === 0 ? (
                         <div className="px-4 py-6 text-center text-slate-400 text-xs font-semibold">
-                          Bildirishnomalar yo'q
+                          {t("student.no_notifications", "Bildirishnomalar yo'q")}
                         </div>
                       ) : (
                         notifications.map((n) => (
@@ -1643,12 +1739,12 @@ export default function StudentDashboard({ user, onLogout }) {
                             onClick={() => {
                               if (!n.is_read) handleMarkAsRead(n.id);
                             }}
-                            className={`px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer text-left relative flex gap-2.5 ${
-                              !n.is_read ? "bg-blue-50/20" : ""
+                            className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer text-left relative flex gap-2.5 ${
+                              !n.is_read ? "bg-blue-50/20 dark:bg-blue-500/5" : ""
                             }`}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <p className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                                 {n.title}
                                 {!n.is_read && (
                                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />
@@ -1672,7 +1768,7 @@ export default function StudentDashboard({ user, onLogout }) {
 
             <button
               onClick={toggleTheme}
-              className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-50 border border-gray-200 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 border border-gray-200 dark:border-gray-700 transition-colors dark:text-slate-300"
             >
               {theme === "dark" ? (
                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -1697,19 +1793,19 @@ export default function StudentDashboard({ user, onLogout }) {
               {showUserMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                  <div className="absolute right-0 top-11 w-48 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1">
-                    <div className="px-4 py-2.5 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-slate-800">{user?.first_name} {user?.last_name}</p>
-                      <p className="text-xs text-slate-400">{user?.role}</p>
+                  <div className="absolute right-0 top-11 w-48 bg-white dark:bg-[#111c32] rounded-xl border border-gray-100 dark:border-gray-700 shadow-xl z-50 py-1">
+                    <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.first_name} {user?.last_name}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{user?.role}</p>
                     </div>
                     <button
                       onClick={() => { setShowUserMenu(false); onLogout && onLogout(); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
                     >
                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
                       </svg>
-                      Chiqish
+                      {t("topbar.logout", "Chiqish")}
                     </button>
                   </div>
                 </>
@@ -1796,21 +1892,21 @@ function HomeworkSubmitForm({ homeworkId, onSuccess }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col gap-4">
-      <h4 className="font-bold text-slate-800 text-sm">Vazifani topshirish</h4>
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-[#111c32] border border-gray-200 dark:border-gray-700 rounded-2xl p-5 flex flex-col gap-4">
+      <h4 className="font-bold text-slate-800 dark:text-white text-sm">Vazifani topshirish</h4>
       
       <div className="flex flex-col gap-2">
-        <label className="text-xs text-slate-500 font-bold">Tavsif yoki havola (URL):</label>
+        <label className="text-xs text-slate-500 dark:text-slate-400 font-bold">Tavsif yoki havola (URL):</label>
         <textarea
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full h-24 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 transition-all resize-none font-semibold"
+          className="w-full h-24 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm outline-none focus:border-[#ebd2b8] focus:ring-2 focus:ring-[#ebd2b8]/20 transition-all resize-none font-semibold bg-white dark:bg-[#0B1326] dark:text-white"
           placeholder="Vazifa havolasi yoki izoh..."
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-xs text-slate-500 font-bold">Fayl biriktirish (ixtiyoriy):</label>
+        <label className="text-xs text-slate-500 dark:text-slate-400 font-bold">Fayl biriktirish (ixtiyoriy):</label>
         <input
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] || null)}

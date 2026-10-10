@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useLanguage } from "../context/language-context";
 
 export default function Dashboard({ user }) {
+  const { t } = useLanguage();
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
   const [selectedDayId, setSelectedDayId] = useState(null);
@@ -68,27 +70,27 @@ export default function Dashboard({ user }) {
     fetchCounts();
   }, [user, isAdmin]);
 
-  const stats = [
-    { label: "Guruhlar", value: counts.groups.toString(), icon: (
+  const stats = useMemo(() => [
+    { label: t("dashboard.stats.groups", "Guruhlar"), value: counts.groups.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     )},
     ...(isAdmin ? [
-      { label: "Kurslar", value: counts.courses.toString(), icon: (
+      { label: t("dashboard.stats.courses", "Kurslar"), value: counts.courses.toString(), icon: (
         <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       )},
-      { label: "Talabalar", value: counts.students.toString(), icon: (
+      { label: t("dashboard.stats.students", "Talabalar"), value: counts.students.toString(), icon: (
         <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
       )},
     ] : []),
-    { label: "Sovg'alar", value: counts.gifts.toString(), icon: (
+    { label: t("dashboard.stats.gifts", "Sovg'alar"), value: counts.gifts.toString(), icon: (
       <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
     )},
     ...(isAdmin ? [
-      { label: "O'qituvchilar", value: counts.teachers.toString(), icon: (
+      { label: t("dashboard.stats.teachers", "O'qituvchilar"), value: counts.teachers.toString(), icon: (
         <svg width="20" height="20" fill="none" stroke="#7C5CFC" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M4 21v-2a4 4 0 0 1 3-3.87"/></svg>
       )},
     ] : []),
-  ];
+  ], [counts, isAdmin, t]);
 
   const schedules = [
     { id: 1, name: "Sultonqulov Abduxoshim", days: "Du/Se/Ch/Pa/Ju", time: "09:30 dan - 12:30 gacha", dateRange: "15 Yan, 2026 - 27 Iyun, 2026", group: "F2 Autodesk // 18" },
@@ -122,8 +124,8 @@ export default function Dashboard({ user }) {
     <div className="pb-10">
       {/* Welcome */}
       <div className="mb-8">
-        <h1 className="text-2xl font-extrabold text-slate-900">Salom, {user.first_name} 👋</h1>
-        <p className="text-slate-500 text-sm mt-1">ApexEdu platformasiga xush kelibsiz!</p>
+        <h1 className="text-2xl font-extrabold text-slate-900">{t("dashboard.welcome", "Salom")}, {user.first_name} 👋</h1>
+        <p className="text-slate-500 text-sm mt-1">{t("dashboard.welcome_sub", "ApexEdu platformasiga xush kelibsiz!")}</p>
       </div>
 
       {/* Stats Grid */}
@@ -145,7 +147,7 @@ export default function Dashboard({ user }) {
           onClick={() => setIsScheduleOpen(!isScheduleOpen)}
           className="px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50/50 transition-colors select-none"
         >
-          <h2 className="text-[15px] font-extrabold text-slate-800">Dars Jadvali</h2>
+          <h2 className="text-[15px] font-extrabold text-slate-800">{t("dashboard.schedule", "Dars Jadvali")}</h2>
           <svg 
             width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" 
             className={`text-slate-400 transition-transform duration-300 ${isScheduleOpen ? "rotate-180" : ""}`}
@@ -162,7 +164,7 @@ export default function Dashboard({ user }) {
                 <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95">
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
-                <span className="text-[13px] font-extrabold text-slate-700">7-o'quv oyi</span>
+                <span className="text-[13px] font-extrabold text-slate-700">7{t("dashboard.study_month", "-o'quv oyi")}</span>
                 <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-gray-50 transition-colors active:scale-95">
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
                 </button>
@@ -204,7 +206,7 @@ export default function Dashboard({ user }) {
                  </div>
                  <div className="mt-5 flex justify-center">
                    <button className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-400 hover:bg-gray-50 transition-colors">
-                     Yana ko'rsatish (9)
+                     {t("dashboard.show_more", "Yana ko'rsatish")} (9)
                    </button>
                  </div>
               </div>
@@ -212,45 +214,48 @@ export default function Dashboard({ user }) {
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 border-t border-gray-100 pt-6">
                   {/* Tabs: Assistant / Teacher */}
                   <div className="flex gap-6 border-b border-gray-100 mb-6">
-                     {["Assistant", "Teacher"].map(tab => (
+                     {[
+                       { key: "Assistant", label: t("dashboard.assistant", "Assistent") },
+                       { key: "Teacher", label: t("dashboard.teacher", "O'qituvchi") }
+                     ].map(tab => (
                        <button 
-                         key={tab}
-                         onClick={() => setAttendanceTab(tab)}
-                         className={`pb-3 text-sm font-bold relative transition-colors ${attendanceTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
+                         key={tab.key}
+                         onClick={() => setAttendanceTab(tab.key)}
+                         className={`pb-3 text-sm font-bold relative transition-colors ${attendanceTab === tab.key ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}
                        >
-                         {tab}
-                         {attendanceTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 rounded-t-full" />}
+                         {tab.label}
+                         {attendanceTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-500 rounded-t-full" />}
                        </button>
                      ))}
                   </div>
 
                   {/* Ma'lumot Card */}
                   <div className="bg-slate-50 rounded-2xl p-6 mb-8 w-fit min-w-[400px]">
-                    <h4 className="font-extrabold text-sm text-slate-800 mb-4">Ma'lumot</h4>
+                    <h4 className="font-extrabold text-sm text-slate-800 mb-4">{t("dashboard.info", "Ma'lumot")}</h4>
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                       </div>
                       <div>
                         <p className="text-sm font-bold text-slate-800">Sultonqulov Abduxoshim</p>
-                        <p className="text-xs font-semibold text-slate-500 mt-0.5">Teacher</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5">{attendanceTab === "Assistant" ? t("dashboard.assistant", "Assistent") : t("dashboard.teacher", "O'qituvchi")}</p>
                       </div>
                     </div>
                     <div className="flex gap-8 bg-white p-4 rounded-xl border border-gray-100 shadow-sm overflow-x-auto custom-scrollbar">
                       <div className="shrink-0">
-                        <p className="text-[10px] text-slate-400 font-bold mb-1">Dars kuni</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-1">{t("dashboard.lesson_day", "Dars kuni")}</p>
                         <p className="text-xs font-bold text-slate-700">11 May, 2026</p>
                       </div>
                       <div className="shrink-0">
-                        <p className="text-[10px] text-slate-400 font-bold mb-1">Dars vaqti</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-1">{t("dashboard.lesson_time", "Dars vaqti")}</p>
                         <p className="text-xs font-bold text-slate-700">09:30 - 12:30</p>
                       </div>
                       <div className="shrink-0">
-                        <p className="text-[10px] text-slate-400 font-bold mb-1">Filial</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-1">{t("dashboard.branch", "Filial")}</p>
                         <p className="text-xs font-bold text-slate-700">Chilonzor</p>
                       </div>
                       <div className="shrink-0">
-                        <p className="text-[10px] text-slate-400 font-bold mb-1">Xona</p>
+                        <p className="text-[10px] text-slate-400 font-bold mb-1">{t("common.room", "Xona")}</p>
                         <p className="text-xs font-bold text-slate-700">F2 Autodesk // 18</p>
                       </div>
                     </div>
@@ -261,7 +266,7 @@ export default function Dashboard({ user }) {
 
                   {/* Yo'qlama va mavzu kiritish */}
                   <div className="mb-6">
-                    <h4 className="font-extrabold text-[15px] text-slate-800 mb-5">Yo'qlama va mavzu kiritish</h4>
+                    <h4 className="font-extrabold text-[15px] text-slate-800 mb-5">{t("group_details.attendance_title", "Yo'qlama va mavzu kiritish")}</h4>
                     
                     <div className="flex items-center gap-6 mb-6">
                       <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold transition-colors ${topicType === "O'quv reja" ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}>
@@ -269,19 +274,19 @@ export default function Dashboard({ user }) {
                           {topicType === "O'quv reja" && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                         </div>
                         <input type="radio" className="hidden" checked={topicType === "O'quv reja"} onChange={() => setTopicType("O'quv reja")} />
-                        O'quv reja bo'yicha
+                        {t("group_details.by_curriculum", "O'quv reja bo'yicha")}
                       </label>
                       <label className={`flex items-center gap-2 cursor-pointer text-sm font-semibold transition-colors ${topicType === "Boshqa" ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"}`}>
                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${topicType === "Boshqa" ? "border-emerald-500" : "border-gray-300"}`}>
                           {topicType === "Boshqa" && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                         </div>
                         <input type="radio" className="hidden" checked={topicType === "Boshqa"} onChange={() => setTopicType("Boshqa")} />
-                        Boshqa
+                        {t("group_details.other", "Boshqa")}
                       </label>
                     </div>
 
                     <div className="mb-8 w-full max-w-md">
-                      <label className="block text-xs font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> {t("group_details.topic", "Mavzu")}</label>
                       <input 
                         type="text" 
                         className="w-full bg-slate-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm outline-none text-slate-700 focus:border-emerald-400 transition-colors font-semibold"
@@ -297,9 +302,9 @@ export default function Dashboard({ user }) {
                       <thead>
                         <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-gray-100">
                           <th className="py-3 px-4 w-12">#</th>
-                          <th className="py-3 px-4">O'quvchi ismi</th>
-                          <th className="py-3 px-4 w-32">Vaqti</th>
-                          <th className="py-3 px-4 w-24">Keldi</th>
+                          <th className="py-3 px-4">{t("group_details.student_name", "O'quvchi ismi")}</th>
+                          <th className="py-3 px-4 w-32">{t("group_details.time", "Vaqti")}</th>
+                          <th className="py-3 px-4 w-24">{t("group_details.attended", "Keldi")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">

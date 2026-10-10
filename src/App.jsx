@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider";
+import { LanguageProvider } from "./context/language-context";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Teachers from "./pages/Teachers";
@@ -12,6 +13,7 @@ import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import GroupDetails from "./pages/GroupDetails";
 import StudentDashboard from "./pages/StudentDashboard";
+import Profile from "./pages/Profile";
 
 function AppContent() {
   const navigate = useNavigate();
@@ -62,7 +64,16 @@ function AppContent() {
   };
 
   const handleLogout = useCallback(() => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      fetch("/api/v1/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      }).catch(err => console.error("Logout request error", err));
+    }
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     setUser(null);
     navigate("/");
@@ -91,17 +102,61 @@ function AppContent() {
     }
   }, []);
 
+  const refreshSession = useCallback(async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) return false;
+    try {
+      const res = await fetch("/api/v1/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const base64 = data.accessToken.split('.')[1];
+        const base64Fixed = base64.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = JSON.parse(atob(base64Fixed));
+        const userData = {
+          ...decoded,
+          fullName: decoded.first_name || decoded.phone || "Admin",
+          role: decoded.role || "USER",
+        };
+        localStorage.setItem("token", data.accessToken);
+        localStorage.setItem("refreshToken", data.refreshToken);
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to auto refresh token", err);
+    }
+    return false;
+  }, []);
+
   useEffect(() => {
     if (!user) return;
 
     const expirationTime = getTokenExpirationTime();
-    if (expirationTime === null) return;
+    if (expirationTime === null || expirationTime === 0) return;
 
-    const delay = Math.max(expirationTime - Date.now(), 0);
-    const logoutTimer = window.setTimeout(handleLogout, delay);
+    const refreshTime = expirationTime - 60 * 1000 - Date.now();
 
-    return () => window.clearTimeout(logoutTimer);
-  }, [getTokenExpirationTime, handleLogout, user]);
+    if (refreshTime <= 0) {
+      refreshSession().then(success => {
+        if (!success) handleLogout();
+      });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      const success = await refreshSession();
+      if (!success) {
+        handleLogout();
+      }
+    }, refreshTime);
+
+    return () => window.clearTimeout(timer);
+  }, [getTokenExpirationTime, handleLogout, user, refreshSession]);
 
   useEffect(() => {
     if (user?.role === "TEACHER" && (location.pathname === "/" || location.pathname === "/guruhlar")) {
@@ -113,6 +168,7 @@ function AppContent() {
     if (location.pathname === "/auth/callback") {
       const params = new URLSearchParams(location.search);
       const token = params.get("token");
+      const refreshToken = params.get("refreshToken");
       if (token) {
         try {
           const base64 = token.split('.')[1];
@@ -124,6 +180,9 @@ function AppContent() {
             role: decoded.role || "USER",
           };
           localStorage.setItem("token", token);
+          if (refreshToken) {
+            localStorage.setItem("refreshToken", refreshToken);
+          }
           localStorage.setItem("user", JSON.stringify(userData));
           setUser(userData);
           navigate("/", { replace: true });
@@ -136,11 +195,126 @@ function AppContent() {
 
   useEffect(() => {
     const originalFetch = window.fetch;
+    let isRefreshing = false;
+    let refreshQueue = [];
 
-    window.fetch = async (...args) => {
-      const response = await originalFetch(...args);
+    const processQueue = (error, token = null) => {
+      refreshQueue.forEach(prom => {
+        if (error) {
+          prom.reject(error);
+        } else {
+          prom.resolve(token);
+        }
+      });
+      refreshQueue = [];
+    };
 
-      if (localStorage.getItem("token") && response.status === 401) {
+    window.fetch = async (input, init) => {
+      let requestUrl = "";
+      if (typeof input === "string") {
+        requestUrl = input;
+      } else if (input instanceof URL) {
+        requestUrl = input.href;
+      } else if (input && typeof input === "object" && "url" in input) {
+        requestUrl = input.url;
+      }
+
+      let modifiedInit = init ? { ...init } : {};
+      const token = localStorage.getItem("token");
+
+      if (token && !requestUrl.includes("/api/v1/auth/refresh") && !requestUrl.includes("google")) {
+        if (!modifiedInit.headers) {
+          modifiedInit.headers = {};
+        }
+
+        if (modifiedInit.headers instanceof Headers) {
+          if (!modifiedInit.headers.has("Authorization")) {
+            modifiedInit.headers.set("Authorization", `Bearer ${token}`);
+          }
+        } else if (Array.isArray(modifiedInit.headers)) {
+          const hasAuth = modifiedInit.headers.some(([k]) => k.toLowerCase() === "authorization");
+          if (!hasAuth) {
+            modifiedInit.headers.push(["Authorization", `Bearer ${token}`]);
+          }
+        } else {
+          if (!modifiedInit.headers["Authorization"] && !modifiedInit.headers["authorization"]) {
+            modifiedInit.headers["Authorization"] = `Bearer ${token}`;
+          }
+        }
+      }
+
+      const response = await originalFetch(input, modifiedInit);
+
+      if (response.status === 401 && !requestUrl.includes("/api/v1/auth/refresh") && localStorage.getItem("refreshToken")) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            refreshQueue.push({ resolve, reject });
+          })
+            .then(newToken => {
+              if (modifiedInit.headers instanceof Headers) {
+                modifiedInit.headers.set("Authorization", `Bearer ${newToken}`);
+              } else if (Array.isArray(modifiedInit.headers)) {
+                modifiedInit.headers = modifiedInit.headers.map(([k, v]) => k.toLowerCase() === "authorization" ? [k, `Bearer ${newToken}`] : [k, v]);
+              } else {
+                modifiedInit.headers["Authorization"] = `Bearer ${newToken}`;
+              }
+              return originalFetch(input, modifiedInit);
+            })
+            .catch(() => {
+              handleLogoutRef.current();
+              return response;
+            });
+        }
+
+        isRefreshing = true;
+
+        try {
+          const refreshToken = localStorage.getItem("refreshToken");
+          const refreshResponse = await originalFetch("/api/v1/auth/refresh", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          if (refreshResponse.ok) {
+            const data = await refreshResponse.json();
+            const base64 = data.accessToken.split('.')[1];
+            const base64Fixed = base64.replace(/-/g, '+').replace(/_/g, '/');
+            const decoded = JSON.parse(atob(base64Fixed));
+            const userData = {
+              ...decoded,
+              fullName: decoded.first_name || decoded.phone || "Admin",
+              role: decoded.role || "USER",
+            };
+            localStorage.setItem("token", data.accessToken);
+            localStorage.setItem("refreshToken", data.refreshToken);
+            localStorage.setItem("user", JSON.stringify(userData));
+            setUser(userData);
+
+            isRefreshing = false;
+            processQueue(null, data.accessToken);
+
+            if (modifiedInit.headers instanceof Headers) {
+              modifiedInit.headers.set("Authorization", `Bearer ${data.accessToken}`);
+            } else if (Array.isArray(modifiedInit.headers)) {
+              modifiedInit.headers = modifiedInit.headers.map(([k, v]) => k.toLowerCase() === "authorization" ? [k, `Bearer ${data.accessToken}`] : [k, v]);
+            } else {
+              modifiedInit.headers["Authorization"] = `Bearer ${data.accessToken}`;
+            }
+            return originalFetch(input, modifiedInit);
+          } else {
+            isRefreshing = false;
+            processQueue(new Error("Refresh failed"));
+            handleLogoutRef.current();
+          }
+        } catch (err) {
+          isRefreshing = false;
+          processQueue(err);
+          handleLogoutRef.current();
+        }
+      } else if (response.status === 401 && (requestUrl.includes("/api/v1/auth/refresh") || !localStorage.getItem("refreshToken"))) {
         handleLogoutRef.current();
       }
 
@@ -176,7 +350,7 @@ function AppContent() {
       case "sovgalar":   return <ComingSoon title="Sovg'alar" icon="🎁" />;
       case "moliya":     return <ComingSoon title="Moliya" icon="💰" />;
       case "boshqarish": return <Boshqarish />;
-      case "profil":     return <ComingSoon title="Profil" icon="👤" />;
+      case "profil":     return <Profile user={user} setUser={setUser} />;
       default:           return <Dashboard user={user} />;
     }
   }, [activePage, pathParam, user, urlHomeworkId, urlLessonId, urlStaffId]);
@@ -212,9 +386,11 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="theme">
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <LanguageProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

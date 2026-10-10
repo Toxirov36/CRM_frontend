@@ -5,22 +5,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-html.dark {
-  filter: invert(1) hue-rotate(180deg);
-  background-color: #111827; /* Fallback for smooth background transition */
-}
-
-/* Re-invert media elements so images and avatars keep their true colors */
-html.dark img, 
-html.dark video,
-html.dark .no-invert {
-  filter: invert(1) hue-rotate(180deg);
-}
-
-/* Allow the logo to naturally invert so its background turns dark and matches dark mode */
-html.dark .no-revert-logo {
-  filter: none !important;
-}
+/* Dark mode is handled via Tailwind dark: classes — no filter hacks */
 
 /* Prevent double inversion on specific icons if needed, but usually images are enough */
 

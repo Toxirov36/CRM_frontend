@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useLanguage } from "../context/language-context";
 import Courses from './Courses';
 import Rooms from './Rooms';
 
@@ -25,8 +26,63 @@ const INITIAL_STAFF = [
   { id: 3, name: "Jasur Hamroyev", role: "Mentor", phone: "+998 99 222 33 44", status: "Ta'tilda" },
 ];
 
+/* ───────── Common Drawer Shell ───────── */
+function DrawerShell({ title, subtitle, onClose, onSave, children }) {
+  const { t } = useLanguage();
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 bottom-0 w-[420px] bg-white shadow-2xl z-50 flex flex-col border-l border-gray-100 animate-in slide-in-from-right duration-300">
+        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+            {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors mt-1">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 px-8 py-4 space-y-6 overflow-y-auto custom-scrollbar">
+          {children}
+        </div>
+        <div className="px-8 py-6 border-t border-gray-50 flex gap-3 justify-end bg-gray-50/30">
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">
+            {t("common.cancel", "Bekor qilish")}
+          </button>
+          <button onClick={onSave} className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] text-white text-sm font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95">
+            {t("common.save", "Saqlash")}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ───────── Helpers ───────── */
+function DeleteConfirm({ onClose, onConfirm }) {
+  const { t } = useLanguage();
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
+          <h3 className="font-bold text-slate-900 text-lg mb-2">{t("common.delete_confirm_title", "O'chirishni tasdiqlaysizmi?")}</h3>
+          <p className="text-sm text-slate-500 mb-6">{t("common.delete_confirm_desc", "Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.")}</p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">{t("common.no", "Yo'q")}</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">{t("common.confirm_delete_btn", "Ha, o'chirilsin")}</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ───────── Branch Drawer ───────── */
 function BranchDrawer({ branch, onClose, onSave }) {
+  const { t } = useLanguage();
   const [name, setName] = useState(branch?.name || "");
   const [address, setAddress] = useState(branch?.address || "");
   const [phone, setPhone] = useState(branch?.phone || "");
@@ -37,17 +93,17 @@ function BranchDrawer({ branch, onClose, onSave }) {
   };
 
   return (
-    <DrawerShell title={branch ? "Filialni tahrirlash" : "Filial qo'shish"} onClose={onClose} onSave={handle}>
+    <DrawerShell title={branch ? t("management.edit_branch", "Filialni tahrirlash") : t("management.add_branch", "Filial qo'shish")} onClose={onClose} onSave={handle}>
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
-        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder="Filial nomi" value={name} onChange={e => setName(e.target.value)} />
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("management.branch_name", "Filial nomi")}</label>
+        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder={t("management.branch_name", "Filial nomi")} value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Manzil</label>
-        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder="Manzilni kiriting" value={address} onChange={e => setAddress(e.target.value)} />
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("common.address", "Manzil")}</label>
+        <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder={t("management.branch_address", "Manzilni kiriting")} value={address} onChange={e => setAddress(e.target.value)} />
       </div>
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Telefon</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("common.phone", "Telefon")}</label>
         <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder="+998" value={phone} onChange={e => setPhone(e.target.value)} />
       </div>
     </DrawerShell>
@@ -56,6 +112,7 @@ function BranchDrawer({ branch, onClose, onSave }) {
 
 /* ───────── Staff Drawer ───────── */
 function StaffDrawer({ staff, onClose, onSave }) {
+  const { t } = useLanguage();
   const [name, setName] = useState(staff?.name || "");
   const [role, setRole] = useState(staff?.role || "");
   const [phone, setPhone] = useState(staff?.phone || "");
@@ -66,17 +123,17 @@ function StaffDrawer({ staff, onClose, onSave }) {
   };
 
   return (
-    <DrawerShell title={staff ? "Xodimni tahrirlash" : "Xodim qo'shish"} onClose={onClose} onSave={handle}>
+    <DrawerShell title={staff ? t("management.edit_staff", "Xodimni tahrirlash") : t("management.add_staff", "Xodim qo'shish")} onClose={onClose} onSave={handle}>
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Ism-familiya</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("management.staff_name", "Ism-familiya")}</label>
         <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder="F.I.O" value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Lavozim</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("management.staff_role", "Lavozim")}</label>
         <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder="Masalan: Mentor" value={role} onChange={e => setRole(e.target.value)} />
       </div>
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Telefon</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("common.phone", "Telefon")}</label>
         <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400" placeholder="+998" value={phone} onChange={e => setPhone(e.target.value)} />
       </div>
     </DrawerShell>
@@ -85,6 +142,7 @@ function StaffDrawer({ staff, onClose, onSave }) {
 
 /* ───────── Filiallar Tab ───────── */
 function FiliallarTab() {
+  const { t } = useLanguage();
   const [branches, setBranches] = useState(INITIAL_BRANCHES);
   const [drawer, setDrawer] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -101,9 +159,9 @@ function FiliallarTab() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-bold text-slate-800 text-base">Filiallar</h2>
+        <h2 className="font-bold text-slate-800 text-base">{t("management.branches_title", "Filiallar")}</h2>
         <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
-          + Filial qo'shish
+          {t("management.add_branch", "+ Filial qo'shish")}
         </button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -132,6 +190,7 @@ function FiliallarTab() {
 
 /* ───────── Hodimlar Tab ───────── */
 function HodimlarTab() {
+  const { t } = useLanguage();
   const [staff, setStaff] = useState(INITIAL_STAFF);
   const [drawer, setDrawer] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -148,20 +207,20 @@ function HodimlarTab() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-hidden">
       <div className="flex items-center justify-between mb-6 px-1">
-        <h2 className="font-bold text-slate-800 text-base">Xodimlar</h2>
+        <h2 className="font-bold text-slate-800 text-base">{t("management.staff_title", "Xodimlar")}</h2>
         <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
-          + Xodim qo'shish
+          {t("management.add_staff", "+ Xodim qo'shish")}
         </button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-gray-50">
-              <th className="pb-4 px-4">Xodim</th>
-              <th className="pb-4 px-4">Lavozim</th>
-              <th className="pb-4 px-4">Telefon</th>
-              <th className="pb-4 px-4">Status</th>
-              <th className="pb-4 px-4 text-right">Amallar</th>
+              <th className="pb-4 px-4">{t("management.staff_title", "Xodim")}</th>
+              <th className="pb-4 px-4">{t("management.staff_role", "Lavozim")}</th>
+              <th className="pb-4 px-4">{t("common.phone", "Telefon")}</th>
+              <th className="pb-4 px-4">{t("common.status", "Status")}</th>
+              <th className="pb-4 px-4 text-right">{t("common.actions", "Amallar")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -199,6 +258,7 @@ function HodimlarTab() {
 export default function Boshqarish() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const pathParts = location.pathname.split("/").filter(Boolean);
   
   // pathParts[1] is the tab, e.g., 'kurslar'
@@ -211,13 +271,23 @@ export default function Boshqarish() {
     navigate(`/boshqarish/${tab.toLowerCase()}`);
   };
 
+  const getTabLabel = (tab) => {
+    switch (tab) {
+      case "Kurslar": return t("management.tabs.courses", "Kurslar");
+      case "Xonalar": return t("management.tabs.rooms", "Xonalar");
+      case "Filiallar": return t("management.tabs.branches", "Filiallar");
+      case "Hodimlar": return t("management.tabs.staff", "Hodimlar");
+      default: return tab;
+    }
+  };
+
   return (
     <div className="pb-10">
-      <h1 className="text-2xl font-extrabold text-slate-900 mb-6">Boshqarish</h1>
+      <h1 className="text-2xl font-extrabold text-slate-900 mb-6">{t("management.title", "Boshqarish")}</h1>
       <div className="flex gap-2 border-b border-gray-100 mb-8 overflow-x-auto custom-scrollbar scrollbar-hide">
         {TABS.map(tab => (
-          <button key={tab} onClick={() => handleSetTab(tab)} className={`whitespace-nowrap pb-4 px-4 text-sm font-bold transition-all relative shrink-0 ${activeTab === tab ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}>
-            {tab}
+          <button key={tab} onClick={() => handleSetTab(tab)} className={`whitespace-nowrap pb-4 px-4 text-sm font-bold transition-all relative shrink-0 cursor-pointer ${activeTab === tab ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}>
+            {getTabLabel(tab)}
             {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full" />}
           </button>
         ))}

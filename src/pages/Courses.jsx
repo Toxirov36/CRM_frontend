@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useLanguage } from '../context/language-context';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 /* ───────── Common Drawer Shell ───────── */
 function DrawerShell({ title, subtitle, onClose, onSave, children }) {
+  const { t } = useLanguage();
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
@@ -22,10 +32,10 @@ function DrawerShell({ title, subtitle, onClose, onSave, children }) {
         </div>
         <div className="px-8 py-6 border-t border-gray-50 flex gap-3 justify-end bg-gray-50/30">
           <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">
-            Bekor qilish
+            {t("common.cancel", "Bekor qilish")}
           </button>
           <button onClick={onSave} className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] text-white text-sm font-semibold shadow-lg shadow-indigo-100 transition-all active:scale-95">
-            Saqlash
+            {t("common.save", "Saqlash")}
           </button>
         </div>
       </div>
@@ -60,37 +70,21 @@ function CourseDrawer({ course, onClose, onSave }) {
     setFiliallar(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
   };
 
+  const { t } = useLanguage();
   return (
     <DrawerShell
-      title={course ? "Kursni tahrirlash" : "Kurs qoshish"}
-      subtitle={course ? "Kurs ma'lumotlarini o'zgartiring" : "Bu yerda siz yangi Kurs qo'shishingiz mumkin."}
+      title={course ? t("courses.edit", "Kursni tahrirlash") : t("courses.add", "Kurs qoshish")}
+      subtitle={course ? t("courses.edit_desc", "Kurs ma'lumotlarini o'zgartiring") : t("courses.add_desc", "Bu yerda siz yangi Kurs qo'shishingiz mumkin.")}
       onClose={onClose}
       onSave={handle}
     >
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Nomi</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("courses.name", "Nomi")}</label>
         <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all" placeholder="Kurs nomi..." value={name} onChange={e => setName(e.target.value)} />
       </div>
 
-      {/* <div> */}
-        {/* <div className="flex items-center justify-between mb-3">
-          <label className="text-sm font-bold text-slate-800">Kurs mavjud bo'ladigon filiallar</label>
-          <button onClick={() => setFiliallar(["Filial 1", "Filial 2"])} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">Hammasini tanlash</button>
-        </div> */}
-        {/* <div className="space-y-3">
-          {["Filial 1", "Filial 2"].map(f => (
-            <label key={f} className="flex items-center gap-3 cursor-pointer group">
-              <div onClick={() => toggleFilial(f)} className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${filiallar.includes(f) ? "bg-indigo-600 border-indigo-600" : "border-gray-300 group-hover:border-indigo-400"}`}>
-                {filiallar.includes(f) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12" /></svg>}
-              </div>
-              <span className="text-sm font-medium text-slate-700">{f}</span>
-            </label>
-          ))}
-        </div> */}
-      {/* </div> */}
-
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Dars davomiyligi (soatda)</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("courses.duration_hours", "Dars davomiyligi (soatda)")}</label>
         <input
           type="number"
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
@@ -101,7 +95,7 @@ function CourseDrawer({ course, onClose, onSave }) {
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Kurs davomiyligi (oyda)</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("courses.duration_months", "Kurs davomiyligi (oyda)")}</label>
         <input
           type="number"
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
@@ -112,35 +106,33 @@ function CourseDrawer({ course, onClose, onSave }) {
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Narx</label>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("courses.price", "Narx")}</label>
         <div className="relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2" /><circle cx="12" cy="12" r="3" /></svg></div>
-          <input type="number" className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Narxini kiriting" value={price} onChange={e => setPrice(e.target.value)} />
+          <input type="number" className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder={t("courses.price_placeholder", "Narxini kiriting")} value={price} onChange={e => setPrice(e.target.value)} />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Daraja (Level)</label>
-        <div className="relative">
-          <select
-            className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 bg-white cursor-pointer"
-            value={level}
-            onChange={e => setLevel(e.target.value)}
-          >
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-          </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
-          </div>
-        </div>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("courses.level", "Daraja (Level)")}</label>
+        <Select value={level} onValueChange={(val) => setLevel(val)}>
+          <SelectTrigger className="w-full border border-gray-200 rounded-xl px-4 py-3 h-[46px] text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 bg-white cursor-pointer select-none">
+            <SelectValue placeholder={t("courses.level_select", "Darajani tanlang")} />
+          </SelectTrigger>
+          <SelectContent position="popper" className="z-50 bg-white border border-gray-100 shadow-xl rounded-xl p-1 min-w-[200px] animate-in fade-in slide-in-from-top-1">
+            <SelectGroup>
+              <SelectItem value="beginner" className="px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer transition-colors">Beginner</SelectItem>
+              <SelectItem value="intermediate" className="px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer transition-colors">Intermediate</SelectItem>
+              <SelectItem value="advanced" className="px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer transition-colors">Advanced</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-slate-800 mb-2">Description</label>
-        <textarea className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 h-28 resize-none transition-all" placeholder="Kurs haqida qisqacha ma'lumot..." value={description} onChange={e => setDescription(e.target.value)} />
-        <p className="text-[11px] text-slate-400 mt-1.5">Bu kurs haqida qo'shimcha ma'lumot.</p>
+        <label className="block text-sm font-bold text-slate-800 mb-2">{t("courses.description", "Description")}</label>
+        <textarea className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 h-28 resize-none transition-all" placeholder={t("courses.description_placeholder", "Kurs haqida qisqacha ma'lumot...")} value={description} onChange={e => setDescription(e.target.value)} />
+        <p className="text-[11px] text-slate-400 mt-1.5">{t("courses.description_hint", "Bu kurs haqida qo'shimcha ma'lumot.")}</p>
       </div>
 
 
@@ -150,16 +142,17 @@ function CourseDrawer({ course, onClose, onSave }) {
 
 /* ───────── Helpers ───────── */
 function DeleteConfirm({ onClose, onConfirm }) {
+  const { t } = useLanguage();
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
-          <h3 className="font-bold text-slate-900 text-lg mb-2">O'chirishni tasdiqlaysizmi?</h3>
-          <p className="text-sm text-slate-500 mb-6">Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.</p>
+          <h3 className="font-bold text-slate-900 text-lg mb-2">{t("common.delete_confirm_title", "O'chirishni tasdiqlaysizmi?")}</h3>
+          <p className="text-sm text-slate-500 mb-6">{t("common.delete_confirm_desc", "Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.")}</p>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">Yo'q</button>
-            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">Ha, o'chirilsin</button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600">{t("common.no", "Yo'q")}</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100">{t("common.confirm_delete_btn", "Ha, o'chirilsin")}</button>
           </div>
         </div>
       </div>
@@ -169,6 +162,7 @@ function DeleteConfirm({ onClose, onConfirm }) {
 
 /* ───────── Kurslar Tab ───────── */
 export default function Courses() {
+  const { t } = useLanguage();
   const [courses, setCourses] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -311,13 +305,13 @@ export default function Courses() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-bold text-slate-800 text-base">Kurslar ro'yxati</h2>
+        <h2 className="font-bold text-slate-800 text-base">{t("courses.list_title", "Kurslar ro'yxati")}</h2>
         <div className="flex items-center gap-2">
           <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-slate-700 text-sm font-semibold rounded-xl transition-all">
-            Arxiv <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+            {t("table.archive", "Arxiv")} <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
           </button>
           <button onClick={() => setDrawer("add")} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-95">
-            + Kurs qo'shish
+            {t("courses.add", "+ Kurs qo'shish")}
           </button>
         </div>
       </div>
@@ -329,10 +323,10 @@ export default function Courses() {
             </div>
             <h3 className="font-bold text-slate-800 mb-1">{c.name}</h3>
             <p className="text-xs text-slate-400 font-medium mb-2">
-              Davomiyligi: {c.duration_month || "—"} oy
+              {t("table.duration", "Davomiyligi")}: {c.duration_month || "—"} {t("courses.month_unit", "oy")}
             </p>
             <p className="text-sm font-bold text-indigo-600">
-              {Number(c.price || c.narx || 0).toLocaleString()} so'm
+              {Number(c.price || c.narx || 0).toLocaleString()} {t("courses.currency", "so'm")}
             </p>
             <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => setDeleteId(c.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
@@ -354,7 +348,7 @@ export default function Courses() {
             className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
-            Previous
+            {t("table.previous", "Previous")}
           </button>
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.ceil(courses.length / 8) }, (_, i) => i + 1).map(p => (
@@ -376,7 +370,7 @@ export default function Courses() {
             disabled={currentPage === Math.ceil(courses.length / 8)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-100 rounded-xl text-[13px] font-bold text-slate-400 hover:bg-gray-50 hover:text-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Next
+            {t("table.next", "Next")}
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
           </button>
         </div>
@@ -415,8 +409,8 @@ export default function Courses() {
                   <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv kurslar</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) kurslar ro'yxati</p>
+                  <h2 className="text-lg font-extrabold text-slate-900">{t("table.archive", "Arxiv")} {t("courses.title", "kurslar")}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{t("rooms.archive_sub", "Nofaol (inactive) kurslar ro'yxati")}</p>
                 </div>
               </div>
               <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -427,11 +421,11 @@ export default function Courses() {
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-8 py-4">
               {arxivLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">{t("common.loading", "Yuklanmoqda...")}</div>
               ) : arxivCourses.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-300">
                   <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
-                  <p className="text-sm">Arxiv bo'sh</p>
+                  <p className="text-sm">{t("table.no_data", "Arxiv bo'sh")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -442,15 +436,15 @@ export default function Courses() {
                           <svg width="17" height="17" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
                         </div>
                         <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Davomiyligi: {c.duration_month || "—"} oy</p>
-                        <p className="text-xs font-bold text-indigo-600 mt-1">{Number(c.price || 0).toLocaleString()} so'm</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{t("table.duration", "Davomiyligi")}: {c.duration_month || "—"} {t("courses.month_unit", "oy")}</p>
+                        <p className="text-xs font-bold text-indigo-600 mt-1">{Number(c.price || 0).toLocaleString()} {t("courses.currency", "so'm")}</p>
                       </div>
                       <button
                         onClick={() => handleActivate(c.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-bold transition-all active:scale-95 shrink-0"
                       >
                         <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
-                        Aktivlashtirish
+                        {t("rooms.activate", "Aktivlashtirish")}
                       </button>
                     </div>
                   ))}
@@ -461,7 +455,7 @@ export default function Courses() {
             {/* Footer */}
             <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
               <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
-                Yopish
+                {t("common.close", "Yopish")}
               </button>
             </div>
           </div>

@@ -1,34 +1,25 @@
 import { useState } from "react";
 import { useTheme } from "./theme-provider";
-
+import { useLanguage } from "../context/language-context";
+import LanguageDropdown from "./LanguageDropdown";
 
 export default function Topbar({ user, activePage, onLogout }) {
-  const [lang, setLang] = useState("O'zbekcha");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
-    <header className="h-14 bg-white border-b border-gray-100 flex items-center px-6 shadow-sm relative">
-
-
+    <header className="h-14 bg-white dark:bg-[#0f172a] border-b border-gray-100 dark:border-gray-800 flex items-center px-6 shadow-sm relative transition-colors">
       <div className="flex-1" />
 
       {/* Right actions */}
       <div className="flex items-center gap-3">
         {/* Language */}
-        <button
-          className="flex items-center gap-1.5 text-sm text-slate-600 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors"
-          onClick={() => setLang(l => l === "O'zbekcha" ? "English" : "O'zbekcha")}
-        >
-          {lang}
-          <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </button>
+        <LanguageDropdown />
 
         {/* Bell */}
         <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-50 border border-gray-200 relative transition-colors">
@@ -67,22 +58,22 @@ export default function Topbar({ user, activePage, onLogout }) {
           {showUserMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-              <div className="absolute right-0 top-11 w-44 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1">
-                <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-slate-800">{user?.first_name} {user?.last_name}</p>
-                  <p className="text-xs text-slate-400">{user?.role}</p>
+              <div className="absolute right-0 top-11 w-44 bg-white dark:bg-[#111c32] rounded-xl border border-gray-100 dark:border-gray-700 shadow-xl z-50 py-1">
+                <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.first_name} {user?.last_name}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-400">{user?.role}</p>
                 </div>
                 <button
                   onClick={() => {
                     setShowUserMenu(false); localStorage.removeItem("token"); // ✅
                     localStorage.removeItem("user"); onLogout && onLogout();
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2"
+                  className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
                   </svg>
-                  Chiqish
+                  {t("topbar.logout", "Chiqish")}
                 </button>
               </div>
             </>

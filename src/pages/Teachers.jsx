@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { useLanguage } from "../context/language-context";
 
 /* ───────── Add Teacher Drawer ───────── */
 function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     first_name: teacher?.first_name || "",
     last_name: teacher?.last_name || "",
@@ -120,8 +122,8 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
       <div className="fixed top-0 right-0 bottom-0 w-[440px] bg-white shadow-2xl z-[70] flex flex-col animate-in slide-in-from-right duration-300">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">{teacher ? "O'qituvchini tahrirlash" : "O'qituvchi qo'shish"}</h2>
-            <p className="text-sm text-slate-500 mt-1">{teacher ? "O'qituvchi ma'lumotlarini o'zgartirish" : "Bu yerda siz yangi o'qituvchi qo'shishingiz mumkin."}</p>
+            <h2 className="text-xl font-bold text-slate-900">{teacher ? t("teachers.edit", "O'qituvchini tahrirlash") : t("teachers.add", "O'qituvchi qo'shish")}</h2>
+            <p className="text-sm text-slate-500 mt-1">{teacher ? t("teachers.edit_desc", "O'qituvchi ma'lumotlarini o'zgartirish") : t("teachers.add_desc", "Bu yerda siz yangi o'qituvchi qo'shishingiz mumkin.")}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -131,17 +133,17 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
         <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Ism <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-slate-800 mb-2">{t("teachers.first_name", "Ism")} <span className="text-red-500">*</span></label>
               <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Ali" value={form.first_name} onChange={set("first_name")} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Familiya <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-slate-800 mb-2">{t("teachers.last_name", "Familiya")} <span className="text-red-500">*</span></label>
               <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Valiyev" value={form.last_name} onChange={set("last_name")} />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Email <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("table.email", "Email")} <span className="text-red-500">*</span></label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -151,7 +153,7 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Parol {!teacher && <span className="text-red-500">*</span>} {teacher && <span className="text-xs font-normal text-slate-400">(o'zgartirish uchun)</span>}</label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("teachers.password", "Parol")} {!teacher && <span className="text-red-500">*</span>} {teacher && <span className="text-xs font-normal text-slate-400">{t("teachers.password_change_hint", "(o'zgartirish uchun)")}</span>}</label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
@@ -161,17 +163,17 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Telefon <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("teachers.phone", "Telefon")} <span className="text-red-500">*</span></label>
             <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="+998901234567" value={form.phone} onChange={set("phone")} />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Manzil <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("teachers.address", "Manzil")} <span className="text-xs font-normal text-slate-400">{t("common.optional", "(ixtiyoriy)")}</span></label>
             <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Toshkent, Chilonzor" value={form.address} onChange={set("address")} />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-3">Guruh <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-3">{t("teachers.group", "Guruh")} <span className="text-xs font-normal text-slate-400">{t("common.optional", "(ixtiyoriy)")}</span></label>
             <div className="space-y-2.5">
               {selectedGroups.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -192,7 +194,7 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
                 onClick={() => setShowGroupSelector(!showGroupSelector)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-indigo-300 rounded-xl text-indigo-600 font-semibold text-sm hover:bg-indigo-50 transition-colors"
               >
-                + Qo'shish
+                + {t("common.add", "Qo'shish")}
               </button>
             </div>
           </div>
@@ -410,14 +412,14 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
 
         <div className="p-6 border-t border-gray-100 flex gap-3 justify-end bg-gray-50/20">
           <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
-            Bekor qilish
+            {t("common.cancel", "Bekor qilish")}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] disabled:opacity-60 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("common.loading", "Saqlanmoqda...") : t("common.save", "Saqlash")}
           </button>
         </div>
       </div>
@@ -426,6 +428,7 @@ function AddTeacherDrawer({ onClose, onSave, teacher, teacherGroups = [] }) {
 }
 
 export default function Teachers() {
+  const { t } = useLanguage();
   const [drawer, setDrawer] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
 
@@ -617,11 +620,11 @@ export default function Teachers() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">O'qituvchilar</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{t("teachers.title", "O'qituvchilar")}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95">
-            + O'qituvchi qoshish
+            {t("teachers.add", "+ O'qituvchi qo'shish")}
           </button>
         </div>
       </div>
@@ -636,12 +639,12 @@ export default function Teachers() {
             </div>
             <input
               className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-              placeholder="Search"
+              placeholder={t("table.search", "Search")}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />          </div>
           <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-gray-50 transition-all">
-            Arxiv <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+            {t("table.archive", "Arxiv")} <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
           </button>
         </div>
       </div>
@@ -652,21 +655,52 @@ export default function Teachers() {
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-50 bg-slate-50/20">
-                <th className="py-4 px-6 whitespace-nowrap">Nomi <span className="text-[10px] ml-1">↓</span></th>
-                <th className="py-4 px-6 whitespace-nowrap">Guruh</th>
-                <th className="py-4 px-6 whitespace-nowrap">Telefon raqamlari</th>
-                <th className="py-4 px-6 whitespace-nowrap">Email</th>
-                <th className="py-4 px-6 whitespace-nowrap">Manzil</th>
-                <th className="py-4 px-6 whitespace-nowrap">Yaratilgan sana</th>
-                <th className="py-4 px-6 text-right pr-8 whitespace-nowrap">Amallar</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.name", "Nomi")} <span className="text-[10px] ml-1">↓</span></th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.group", "Guruh")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.phone_numbers", "Telefon raqamlari")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.email", "Email")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.address", "Manzil")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.created_date", "Yaratilgan sana")}</th>
+                <th className="py-4 px-6 text-right pr-8 whitespace-nowrap">{t("table.actions", "Amallar")}</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 shrink-0" />
+                        <div className="h-4 w-32 bg-slate-100 rounded" />
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-16 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-24 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-36 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-28 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-20 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6 text-right pr-8">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : filteredTeachers.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-300">Ma'lumot yo'q</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-slate-300">{t("table.no_data", "Ma'lumot yo'q")}</td></tr>
               ) : filteredTeachers.map(t => (
                 <tr key={t.id} className="group hover:bg-slate-50/30 transition-colors">
 
@@ -718,7 +752,7 @@ export default function Teachers() {
                     <div className="flex items-center justify-end gap-1.5">
                       <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></button>
                       <button onClick={() => setDeleteId(t.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg></button>
-                      <button onClick={() => openEdit(t)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg></button>
+                      <button onClick={() => openEdit(t)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-orange-50 text-slate-400 hover:orange-600"><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg></button>
                     </div>
                   </td>
                 </tr>
@@ -734,7 +768,7 @@ export default function Teachers() {
             disabled={page === 1}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-gray-50 transition-all disabled:opacity-40"
           >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg> Previous
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg> {t("table.previous", "Previous")}
           </button>
           <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
@@ -749,7 +783,7 @@ export default function Teachers() {
             disabled={page === totalPages}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-gray-50 transition-all disabled:opacity-40"
           >
-            Next <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+            {t("table.next", "Next")} <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
           </button>
         </div>
       </div>
@@ -779,8 +813,8 @@ export default function Teachers() {
                   <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv o'qituvchilar</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) o'qituvchilar ro'yxati</p>
+                  <h2 className="text-lg font-extrabold text-slate-900">{t("rooms.archive_title", "Arxiv o'qituvchilar")}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{t("rooms.archive_sub", "Nofaol (inactive) o'qituvchilar ro'yxati")}</p>
                 </div>
               </div>
               <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -791,21 +825,21 @@ export default function Teachers() {
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto px-8 py-4">
               {arxivLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">{t("common.loading", "Yuklanmoqda...")}</div>
               ) : arxivTeachers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-300">
                   <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
-                  <p className="text-sm">Arxiv bo'sh</p>
+                  <p className="text-sm">{t("table.no_data", "Arxiv bo'sh")}</p>
                 </div>
               ) : (
                 <table className="w-full text-left">
                   <thead>
                     <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-100">
-                      <th className="py-3 pr-4">O'qituvchi</th>
-                      <th className="py-3 pr-4">Telefon</th>
-                      <th className="py-3 pr-4">Email</th>
-                      <th className="py-3 pr-4">Sana</th>
-                      <th className="py-3 text-right">Amal</th>
+                      <th className="py-3 pr-4">{t("table.teacher", "O'qituvchi")}</th>
+                      <th className="py-3 pr-4">{t("common.phone", "Telefon")}</th>
+                      <th className="py-3 pr-4">{t("table.email", "Email")}</th>
+                      <th className="py-3 pr-4">{t("common.date", "Sana")}</th>
+                      <th className="py-3 text-right">{t("table.actions", "Amal")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -836,7 +870,7 @@ export default function Teachers() {
                             <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                               <path d="M20 6 9 17l-5-5" />
                             </svg>
-                            Aktivlashtirish
+                            {t("rooms.activate", "Aktivlashtirish")}
                           </button>
                         </td>
                       </tr>
@@ -849,7 +883,7 @@ export default function Teachers() {
             {/* Modal Footer */}
             <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
               <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
-                Yopish
+                {t("common.close", "Yopish")}
               </button>
             </div>
           </div>
@@ -867,16 +901,17 @@ export default function Teachers() {
 }
 
 function DeleteConfirm({ onClose, onConfirm }) {
+  const { t } = useLanguage();
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-[80]" onClick={onClose} />
       <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
-          <h3 className="font-bold text-slate-900 text-lg mb-2">O'chirishni tasdiqlaysizmi?</h3>
-          <p className="text-sm text-slate-500 mb-6">Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.</p>
+          <h3 className="font-bold text-slate-900 text-lg mb-2">{t("teachers.delete_title", "O'chirishni tasdiqlaysizmi?")}</h3>
+          <p className="text-sm text-slate-500 mb-6">{t("teachers.delete_desc", "Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.")}</p>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">Yo'q</button>
-            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-[#FF453A] hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100 transition-all active:scale-95">Ha, o'chirilsin</button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">{t("common.no", "Yo'q")}</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-[#FF453A] hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100 transition-all active:scale-95">{t("common.confirm_delete_btn", "Ha, o'chirilsin")}</button>
           </div>
         </div>
       </div>

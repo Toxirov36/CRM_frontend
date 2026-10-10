@@ -1,75 +1,77 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-
-const MENU_ITEMS = [
-  {
-    label: "Kurslar", tab: "kurslar",
-    svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>,
-  },
-  {
-    label: "Xonalar", tab: "xonalar",
-    svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
-  },
-  {
-    label: "Filiallar", tab: "filiallar",
-    svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>,
-  },
-  {
-    label: "Hodimlar", tab: "hodimlar",
-    svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
-  },
-];
-
-const ADMIN_NAV = [
-  {
-    id: "asosiy", label: "Asosiy",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
-  },
-  {
-    id: "oqituvchi", label: "O'qituvchilar",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-  },
-  {
-    id: "guruhlar", label: "Guruhlar",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
-  },
-  {
-    id: "talabalar", label: "Talabalar",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></svg>,
-  },
-  {
-    id: "sovgalar", label: "Sovg'alar",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>,
-  },
-  {
-    id: "moliya", label: "Moliya", badge: "100",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
-  },
-  {
-    id: "boshqarish", label: "Boshqarish",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" /></svg>,
-  },
-];
-
-const TEACHER_NAV = [
-  {
-    id: "guruhlar", label: "Guruhlar",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
-    subItems: [
-      { id: "guruhlar", label: "Guruhlar" },
-      { id: "yigilayotgan-guruhlar", label: "Yig'ilayotgan guruhlar" }
-    ]
-  },
-  {
-    id: "profil", label: "Profil",
-    svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-  },
-];
+import { useLanguage } from "../context/language-context";
 
 export default function Sidebar({ activePage, setActivePage, user }) {
   const [showMenu, setShowMenu] = useState(false);
   const [expandedNav, setExpandedNav] = useState("guruhlar");
   const navigate = useNavigate();
+  const { t } = useLanguage();
+
+  const MENU_ITEMS = useMemo(() => [
+    {
+      label: t("nav.courses", "Kurslar"), tab: "kurslar",
+      svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>,
+    },
+    {
+      label: t("nav.rooms", "Xonalar"), tab: "xonalar",
+      svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
+    },
+    {
+      label: t("nav.branches", "Filiallar"), tab: "filiallar",
+      svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>,
+    },
+    {
+      label: t("nav.staff", "Hodimlar"), tab: "hodimlar",
+      svg: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+    },
+  ], [t]);
+
+  const ADMIN_NAV = useMemo(() => [
+    {
+      id: "asosiy", label: t("nav.main", "Asosiy"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
+    },
+    {
+      id: "oqituvchi", label: t("nav.teachers", "O'qituvchilar"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+    },
+    {
+      id: "guruhlar", label: t("nav.groups", "Guruhlar"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+    },
+    {
+      id: "talabalar", label: t("nav.students", "Talabalar"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></svg>,
+    },
+    {
+      id: "sovgalar", label: t("nav.gifts", "Sovg'alar"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>,
+    },
+    {
+      id: "moliya", label: t("nav.finance", "Moliya"), badge: "100",
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
+    },
+    {
+      id: "boshqarish", label: t("nav.management", "Boshqarish"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" /></svg>,
+    },
+  ], [t]);
+
+  const TEACHER_NAV = useMemo(() => [
+    {
+      id: "guruhlar", label: t("nav.groups", "Guruhlar"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+      subItems: [
+        { id: "guruhlar", label: t("nav.groups", "Guruhlar") },
+        { id: "yigilayotgan-guruhlar", label: t("nav.pending_groups", "Yig'ilayotgan guruhlar") }
+      ]
+    },
+    {
+      id: "profil", label: t("nav.profile", "Profil"),
+      svg: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+    },
+  ], [t]);
 
   const isTeacher = user?.role === "TEACHER";
   const NAV = isTeacher ? TEACHER_NAV : ADMIN_NAV;
@@ -203,15 +205,15 @@ export default function Sidebar({ activePage, setActivePage, user }) {
               </div>
             </div>
             <div>
-              <h4 className="text-[13px] font-bold text-slate-800 leading-none mb-1.5">Obuna</h4>
-              <p className="text-[11px] text-red-500 font-semibold leading-none">Obunangiz tugagan</p>
+              <h4 className="text-[13px] font-bold text-slate-800 leading-none mb-1.5">{t("nav.subscription", "Obuna")}</h4>
+              <p className="text-[11px] text-red-500 font-semibold leading-none">{t("nav.subscription_expired", "Obunangiz tugagan")}</p>
             </div>
           </div>
           <button className="w-full bg-[#ff3b30] hover:bg-red-600 text-white rounded-[10px] py-2.5 flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-all shadow-md shadow-red-200/50">
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinejoin="round" strokeLinecap="round" />
             </svg>
-            Obunani yangilash
+            {t("nav.renew_subscription", "Obunani yangilash")}
           </button>
         </div>
       </div>

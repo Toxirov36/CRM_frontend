@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
+import { useLanguage } from "../context/language-context";
 import { DatePicker } from "../components/ui/date-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 
 const getPhotoUrl = (photo) => {
   if (!photo || photo === "null" || photo === "undefined" || photo.endsWith("/null") || photo.endsWith("/undefined")) return null;
@@ -8,6 +17,7 @@ const getPhotoUrl = (photo) => {
 
 /* ───────── Add Student Drawer ───────── */
 function AddStudentDrawer({ onClose, onSave, student }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     first_name: student?.first_name || "",
     last_name: student?.last_name || "",
@@ -161,8 +171,8 @@ function AddStudentDrawer({ onClose, onSave, student }) {
       <div className="fixed top-0 right-0 bottom-0 w-[440px] bg-white shadow-2xl z-[70] flex flex-col animate-in slide-in-from-right duration-300">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">{student ? "Talabani tahrirlash" : "Talaba qo'shish"}</h2>
-            <p className="text-sm text-slate-500 mt-1">{student ? "Talaba ma'lumotlarini o'zgartirish" : "Bu yerda siz yangi Talaba qo'shishingiz mumkin."}</p>
+            <h2 className="text-xl font-bold text-slate-900">{student ? t("students.edit", "Talabani tahrirlash") : t("students.add", "Talaba qo'shish")}</h2>
+            <p className="text-sm text-slate-500 mt-1">{student ? t("students.edit_desc", "Talaba ma'lumotlarini o'zgartirish") : t("students.add_desc", "Bu yerda siz yangi Talaba qo'shishingiz mumkin.")}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -174,18 +184,18 @@ function AddStudentDrawer({ onClose, onSave, student }) {
           {/* Ism va Familiya */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Ism <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-slate-800 mb-2">{t("students.first_name", "Ism")} <span className="text-red-500">*</span></label>
               <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Ali" value={form.first_name} onChange={set("first_name")} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-800 mb-2">Familiya <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-slate-800 mb-2">{t("students.last_name", "Familiya")} <span className="text-red-500">*</span></label>
               <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Valiyev" value={form.last_name} onChange={set("last_name")} />
             </div>
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Email <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("table.email", "Email")} <span className="text-red-500">*</span></label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -196,7 +206,7 @@ function AddStudentDrawer({ onClose, onSave, student }) {
 
           {/* Parol */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Parol {!student && <span className="text-red-500">*</span>} {student && <span className="text-xs font-normal text-slate-400">(o'zgartirish uchun)</span>}</label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("students.password", "Parol")} {!student && <span className="text-red-500">*</span>} {student && <span className="text-xs font-normal text-slate-400">{t("teachers.password_change_hint", "(o'zgartirish uchun)")}</span>}</label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
@@ -207,13 +217,13 @@ function AddStudentDrawer({ onClose, onSave, student }) {
 
           {/* Telefon */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Telefon <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("students.phone", "Telefon")} <span className="text-red-500">*</span></label>
             <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="+998901234567" value={form.phone} onChange={set("phone")} />
           </div>
 
           {/* Tug'ilgan sana */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Tug'ilgan sana <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("students.birth_date", "Tug'ilgan sana")} <span className="text-red-500">*</span></label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
                 <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
@@ -230,13 +240,13 @@ function AddStudentDrawer({ onClose, onSave, student }) {
 
           {/* Manzil — ixtiyoriy */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-2">Manzil <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-2">{t("students.address", "Manzil")} <span className="text-xs font-normal text-slate-400">{t("common.optional", "(ixtiyoriy)")}</span></label>
             <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 transition-all" placeholder="Toshkent, Chilonzor" value={form.address} onChange={set("address")} />
           </div>
 
           {/* Guruhga biriktirish — ixtiyoriy */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-3">Guruhga biriktirish <span className="text-xs font-normal text-slate-400">(ixtiyoriy)</span></label>
+            <label className="block text-sm font-bold text-slate-800 mb-3">{t("students.group", "Guruh")} <span className="text-xs font-normal text-slate-400">{t("common.optional", "(ixtiyoriy)")}</span></label>
             <div className="space-y-2.5">
               {selectedGroups.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -263,174 +273,153 @@ function AddStudentDrawer({ onClose, onSave, student }) {
           </div>
 
           {/* Centered Group Selector Modal */}
-          {showGroupSelector && (
-            <>
-              <div
-                className="fixed inset-0 bg-black/40 z-[75]"
-                onClick={() => setShowGroupSelector(false)}
-                style={{ pointerEvents: "auto" }}
-              />
-              <div
-                className="fixed z-[80] flex flex-col bg-white shadow-2xl rounded-2xl animate-in zoom-in-95 duration-200"
-                style={{
-                  width: "420px",
-                  maxHeight: "70vh",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
-                {/* Modal Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-white rounded-t-2xl">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900">Guruhlar</h3>
-                      <p className="text-[11px] text-slate-400">Guruhni tanlang</p>
-                    </div>
+          <Dialog open={showGroupSelector} onOpenChange={setShowGroupSelector}>
+            <DialogContent className="sm:max-w-md max-h-[70vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl rounded-2xl">
+              {/* Modal Header */}
+              <DialogHeader className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-white rounded-t-2xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                   </div>
-                  <button
-                    onClick={() => setShowGroupSelector(false)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                  </button>
-                </div>
-
-                {/* Search */}
-                <div className="px-4 py-3 border-b border-gray-50">
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Guruh qidirish..."
-                      value={groupSearch}
-                      className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 transition-all bg-slate-50/50"
-                      onChange={(e) => setGroupSearch(e.target.value)}
-                    />
+                  <div className="text-left">
+                    <DialogTitle className="text-sm font-extrabold text-slate-900">Guruhlar</DialogTitle>
+                    <DialogDescription className="text-[11px] text-slate-400 mt-0.5">Guruhni tanlang</DialogDescription>
                   </div>
                 </div>
+              </DialogHeader>
 
-                {/* Selected count badge */}
-                {selectedGroups.length > 0 && (
-                  <div className="px-4 py-2 bg-indigo-50/50 border-b border-indigo-100/50">
-                    <span className="text-xs font-bold text-indigo-600">{selectedGroups.length} ta guruh tanlangan</span>
+              {/* Search */}
+              <div className="px-4 py-3 border-b border-gray-50">
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                   </div>
-                )}
-
-                {/* Groups List */}
-                <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
-                  {groupsLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                      <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
-                      <p className="text-xs">Yuklanmoqda...</p>
-                    </div>
-                  ) : groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).length > 0 ? (
-                    <div className="space-y-1">
-                      {groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map(g => {
-                        const isSelected = selectedGroups.includes(g.id);
-                        return (
-                          <label
-                            key={g.id}
-                            className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all ${
-                              isSelected
-                                ? "bg-indigo-50 border border-indigo-200 shadow-sm"
-                                : "hover:bg-slate-50 border border-transparent"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {
-                                if (isSelected) {
-                                  setSelectedGroups(selectedGroups.filter(id => id !== g.id));
-                                } else {
-                                  setSelectedGroups([...selectedGroups, g.id]);
-                                }
-                              }}
-                              className="accent-indigo-600 w-4 h-4 shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-bold ${isSelected ? "text-indigo-700" : "text-slate-800"}`}>{g.name}</p>
-                              <p className="text-[11px] text-slate-400 mt-0.5">{g.courses?.name || g.course_name || "—"}</p>
-                            </div>
-                            {isSelected && (
-                              <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-300">
-                      <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><circle cx="9" cy="7" r="4" /></svg>
-                      <p className="text-sm">Guruhlar mavjud emas</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 rounded-b-2xl">
-                  <button
-                    onClick={async () => {
-                      if (!student?.id) {
-                        setShowGroupSelector(false);
-                        return;
-                      }
-                      if (selectedGroups.length === 0) {
-                        setShowGroupSelector(false);
-                        return;
-                      }
-                      setGroupSaving(true);
-                      const token = localStorage.getItem("token");
-                      let hasError = false;
-                      for (const group_id of selectedGroups) {
-                        if (!group_id) continue;
-                        try {
-                          const res = await fetch("/api/v1/student-group", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              "accept": "*/*",
-                              "Authorization": `Bearer ${token}`,
-                            },
-                            body: JSON.stringify({
-                              student_id: student.id,
-                              group_id: group_id,
-                            }),
-                          });
-                          const data = await res.json().catch(() => ({}));
-                          if (!res.ok) {
-                            if (res.status !== 409) {
-                              console.error(`Guruh ${group_id} qo'shishda xatolik:`, data.message);
-                              hasError = true;
-                            }
-                          }
-                        } catch (err) {
-                          console.error(`Guruh ${group_id} qo'shishda server xatolik:`, err);
-                          hasError = true;
-                        }
-                      }
-                      setGroupSaving(false);
-                      if (hasError) {
-                        alert("Ba'zi guruhlarni qo'shishda xatolik yuz berdi");
-                      }
-                      setShowGroupSelector(false);
-                      onSave();
-                    }}
-                    disabled={groupSaving}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
-                  >
-                    {groupSaving ? "Saqlanmoqda..." : "Tasdiqlash"}
-                  </button>
+                  <input
+                    type="text"
+                    placeholder="Guruh qidirish..."
+                    value={groupSearch}
+                    className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-400 transition-all bg-slate-50/50"
+                    onChange={(e) => setGroupSearch(e.target.value)}
+                  />
                 </div>
               </div>
-            </>
-          )}
+
+              {/* Selected count badge */}
+              {selectedGroups.length > 0 && (
+                <div className="px-4 py-2 bg-indigo-50/50 border-b border-indigo-100/50">
+                  <span className="text-xs font-bold text-indigo-600">{selectedGroups.length} ta guruh tanlangan</span>
+                </div>
+              )}
+
+              {/* Groups List */}
+              <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
+                {groupsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                    <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                    <p className="text-xs">Yuklanmoqda...</p>
+                  </div>
+                ) : groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).length > 0 ? (
+                  <div className="space-y-1">
+                    {groups.filter(g => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map(g => {
+                      const isSelected = selectedGroups.includes(g.id);
+                      return (
+                        <label
+                          key={g.id}
+                          className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all ${
+                            isSelected
+                              ? "bg-indigo-50 border border-indigo-200 shadow-sm"
+                              : "hover:bg-slate-50 border border-transparent"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              if (isSelected) {
+                                setSelectedGroups(selectedGroups.filter(id => id !== g.id));
+                              } else {
+                                setSelectedGroups([...selectedGroups, g.id]);
+                              }
+                            }}
+                            className="accent-indigo-600 w-4 h-4 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0 text-left">
+                            <p className={`text-sm font-bold ${isSelected ? "text-indigo-700" : "text-slate-800"}`}>{g.name}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{g.courses?.name || g.course_name || "—"}</p>
+                          </div>
+                          {isSelected && (
+                            <svg width="16" height="16" fill="none" stroke="#6366f1" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-slate-300">
+                    <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><circle cx="9" cy="7" r="4" /></svg>
+                    <p className="text-sm">Guruhlar mavjud emas</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 rounded-b-2xl">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!student?.id) {
+                      setShowGroupSelector(false);
+                      return;
+                    }
+                    if (selectedGroups.length === 0) {
+                      setShowGroupSelector(false);
+                      return;
+                    }
+                    setGroupSaving(true);
+                    const token = localStorage.getItem("token");
+                    let hasError = false;
+                    for (const group_id of selectedGroups) {
+                      if (!group_id) continue;
+                      try {
+                        const res = await fetch("/api/v1/student-group", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            "accept": "*/*",
+                            "Authorization": `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({
+                            student_id: student.id,
+                            group_id: group_id,
+                          }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          if (res.status !== 409) {
+                            console.error(`Guruh ${group_id} qo'shishda xatolik:`, data.message);
+                            hasError = true;
+                          }
+                        }
+                      } catch (err) {
+                        console.error(`Guruh ${group_id} qo'shishda server xatolik:`, err);
+                        hasError = true;
+                      }
+                    }
+                    setGroupSaving(false);
+                    if (hasError) {
+                      alert("Ba'zi guruhlarni qo'shishda xatolik yuz berdi");
+                    }
+                    setShowGroupSelector(false);
+                    onSave();
+                  }}
+                  disabled={groupSaving}
+                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]"
+                >
+                  {groupSaving ? "Saqlanmoqda..." : "Tasdiqlash"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Rasm — ixtiyoriy */}
           <div>
@@ -458,14 +447,14 @@ function AddStudentDrawer({ onClose, onSave, student }) {
 
         <div className="p-6 border-t border-gray-100 flex gap-3 justify-end bg-gray-50/20">
           <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
-            Bekor qilish
+            {t("common.cancel", "Bekor qilish")}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-8 py-2.5 rounded-xl bg-[#7C5CFC] hover:bg-[#6b4de6] disabled:opacity-60 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("common.loading", "Saqlanmoqda...") : t("common.save", "Saqlash")}
           </button>
         </div>
       </div>
@@ -475,6 +464,7 @@ function AddStudentDrawer({ onClose, onSave, student }) {
 
 
 export default function Students() {
+  const { t } = useLanguage();
   const [drawer, setDrawer] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -689,24 +679,17 @@ export default function Students() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">Talabalar</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">{t("students.title", "Talabalar")}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95">
-            + Talaba qoshish
+            {t("students.add", "+ Talaba qo'shish")}
           </button>
-          {/* <button className="flex items-center gap-2 px-4 py-2.5 bg-[#10A37F] hover:bg-[#0e8a6c] text-white text-sm font-bold rounded-xl shadow-lg shadow-green-100 transition-all active:scale-95">
-            + Talabani Excel dan qoshish
-          </button> */}
         </div>
       </div>
 
       {/* Filters Row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        {/* <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-gray-50 transition-all w-fit">
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
-          Filters
-        </button> */}
         <div className="flex items-center gap-3"></div>
         <div className="flex items-center gap-3 flex-1 max-w-md md:justify-end">
           <div className="relative flex-1 max-w-xs">
@@ -715,12 +698,12 @@ export default function Students() {
             </div>
             <input
               className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-              placeholder="Search"
+              placeholder={t("table.search", "Search")}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />          </div>
           <button onClick={openArxiv} className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-gray-50 transition-all">
-            Arxiv <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
+            {t("table.archive", "Arxiv")} <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
           </button>
         </div>
       </div>
@@ -731,20 +714,51 @@ export default function Students() {
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-50 bg-slate-50/20">
-                <th className="py-4 px-6 whitespace-nowrap">Nomi <span className="text-[10px] ml-1">↓</span></th>
-                <th className="py-4 px-6 whitespace-nowrap">Guruh</th>
-                <th className="py-4 px-6 whitespace-nowrap">Telefon raqamlari</th>
-                <th className="py-4 px-6 whitespace-nowrap">Email</th>
-                <th className="py-4 px-6 whitespace-nowrap">Manzil</th>
-                <th className="py-4 px-6 whitespace-nowrap">Yaratilgan sana</th>
-                <th className="py-4 px-6 text-right pr-8 whitespace-nowrap">Amallar</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.name", "Nomi")} <span className="text-[10px] ml-1">↓</span></th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.group", "Guruh")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.phone_numbers", "Telefon raqamlari")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.email", "Email")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.address", "Manzil")}</th>
+                <th className="py-4 px-6 whitespace-nowrap">{t("table.created_date", "Yaratilgan sana")}</th>
+                <th className="py-4 px-6 text-right pr-8 whitespace-nowrap">{t("table.actions", "Amallar")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 shrink-0" />
+                        <div className="h-4 w-32 bg-slate-100 rounded" />
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-16 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-24 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-36 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-28 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 w-20 bg-slate-100 rounded" />
+                    </td>
+                    <td className="py-4 px-6 text-right pr-8">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : filteredStudents.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-300">Talabalar topilmadi</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-slate-300">{t("table.no_data", "Talabalar topilmadi")}</td></tr>
               ) : filteredStudents.map(s => (
                 <tr key={s.id} className="group hover:bg-slate-50/30 transition-colors">
                   {/* ✅ first_name + last_name */}
@@ -803,7 +817,7 @@ export default function Students() {
             disabled={page === 1}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-gray-50 transition-all disabled:opacity-40"
           >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg> Previous
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg> {t("table.previous", "Previous")}
           </button>
 
           <div className="flex items-center gap-1">
@@ -823,7 +837,7 @@ export default function Students() {
             disabled={page === totalPages}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-gray-50 transition-all disabled:opacity-40"
           >
-            Next <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+            {t("table.next", "Next")} <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
           </button>
         </div>
       </div>
@@ -852,8 +866,8 @@ export default function Students() {
                   <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-extrabold text-slate-900">Arxiv talabalar</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Nofaol (inactive) talabalar ro'yxati</p>
+                  <h2 className="text-lg font-extrabold text-slate-900">{t("rooms.archive_title", "Arxiv talabalar")}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{t("rooms.archive_sub", "Nofaol (inactive) talabalar ro'yxati")}</p>
                 </div>
               </div>
               <button onClick={() => setArxivOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -864,21 +878,21 @@ export default function Students() {
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto px-8 py-4">
               {arxivLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">Yuklanmoqda...</div>
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm">{t("common.loading", "Yuklanmoqda...")}</div>
               ) : arxivStudents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-300">
                   <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="mb-3"><path d="M21 8v13H3V8M1 3h22v5H1V3zM10 12h4" /></svg>
-                  <p className="text-sm">Arxiv bo'sh</p>
+                  <p className="text-sm">{t("table.no_data", "Arxiv bo'sh")}</p>
                 </div>
               ) : (
                 <table className="w-full text-left">
                   <thead>
                     <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-gray-100">
-                      <th className="py-3 pr-4">Talaba</th>
-                      <th className="py-3 pr-4">Telefon</th>
-                      <th className="py-3 pr-4">Email</th>
-                      <th className="py-3 pr-4">Sana</th>
-                      <th className="py-3 text-right">Amal</th>
+                      <th className="py-3 pr-4">{t("common.student", "Talaba")}</th>
+                      <th className="py-3 pr-4">{t("common.phone", "Telefon")}</th>
+                      <th className="py-3 pr-4">{t("table.email", "Email")}</th>
+                      <th className="py-3 pr-4">{t("common.date", "Sana")}</th>
+                      <th className="py-3 text-right">{t("table.actions", "Amal")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -907,7 +921,7 @@ export default function Students() {
                             <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                               <path d="M20 6 9 17l-5-5" />
                             </svg>
-                            Aktivlashtirish
+                            {t("rooms.activate", "Aktivlashtirish")}
                           </button>
                         </td>
                       </tr>
@@ -920,7 +934,7 @@ export default function Students() {
             {/* Modal Footer */}
             <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
               <button onClick={() => setArxivOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
-                Yopish
+                {t("common.close", "Yopish")}
               </button>
             </div>
           </div>
@@ -938,16 +952,17 @@ export default function Students() {
 }
 
 function DeleteConfirm({ onClose, onConfirm }) {
+  const { t } = useLanguage();
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-[80]" onClick={onClose} />
       <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200">
-          <h3 className="font-bold text-slate-900 text-lg mb-2">O'chirishni tasdiqlaysizmi?</h3>
-          <p className="text-sm text-slate-500 mb-6">Ushbu ma'lumot o'chiriladi va uni qayta tiklab bo'lmaydi.</p>
+          <h3 className="font-bold text-slate-900 text-lg mb-2">{t("students.delete_title", "Talabani o'chirish")}</h3>
+          <p className="text-sm text-slate-500 mb-6">{t("students.delete_desc", "Haqiqatan ham bu talabani o'chirmoqchimisiz?")}</p>
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">Yo'q</button>
-            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-[#FF453A] hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100 transition-all active:scale-95">Ha, o'chirilsin</button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-gray-50 transition-colors">{t("common.no", "Yo'q")}</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-[#FF453A] hover:bg-red-600 text-white text-sm font-semibold shadow-lg shadow-red-100 transition-all active:scale-95">{t("common.confirm_delete_btn", "Ha, o'chirilsin")}</button>
           </div>
         </div>
       </div>

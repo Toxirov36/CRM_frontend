@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../context/language-context";
 import HomeworkCreate from "../components/HomeworkCreate";
 import { Snackbar, Alert } from "@mui/material";
 
 const getPhotoUrl = (photo) => {
   if (!photo || photo === "null" || photo === "undefined") return null;
   if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
-  return `http://localhost:3000/uploads/${photo}`;
+  return photo.startsWith("/") ? photo : `/uploads/${photo}`;
 };
 
 const convertToDate = (dateObj) => {
@@ -82,6 +83,7 @@ const formatDateRange = (start, end) => {
 
 export default function GroupDetails({ id, user, urlHomeworkId }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Ma'lumotlar");
@@ -104,6 +106,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
   const [isSubmittingTopic, setIsSubmittingTopic] = useState(false);
   const [savedLessonId, setSavedLessonId] = useState(null);
   const [attendanceState, setAttendanceState] = useState({});
+  const [lessonsList, setLessonsList] = useState([]);
 
   const [notification, setNotification] = useState({
     open: false,
@@ -120,18 +123,33 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
       try {
         const token = localStorage.getItem("token");
         
-        // Fetch groups
-        const resGroup = await fetch("/api/v1/groups/all", {
+        // Fetch group
+        const resGroup = await fetch(`/api/v1/groups/one/${id}`, {
           headers: {
             "accept": "*/*",
             "Authorization": `Bearer ${token}`
           }
         });
         const dataGroup = await resGroup.json();
-        const list = Array.isArray(dataGroup) ? dataGroup : Array.isArray(dataGroup.data) ? dataGroup.data : Array.isArray(dataGroup.groups) ? dataGroup.groups : [];
-        const found = list.find(g => g.id === Number(id) || g.id === id);
+        const found = dataGroup.data || dataGroup;
+        if (found && found.start_date && found.courses?.duration_month) {
+          const start = new Date(found.start_date);
+          const end = new Date(start);
+          end.setMonth(end.getMonth() + Number(found.courses.duration_month));
+          found.end_date = end.toISOString();
+        }
         setGroup(found);
         setStudents(Array.isArray(found?.students) ? found.students : []);
+
+        // Fetch lessons
+        const resLessons = await fetch(`/api/v1/lessons/group/${id}`, {
+          headers: {
+            "accept": "*/*",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const dataLessons = await resLessons.json();
+        setLessonsList(dataLessons.success ? (dataLessons.data || []) : []);
 
         // Fetch schedules
         const resSchedules = await fetch(`/api/v1/groups/${id}/schedules`, {
@@ -196,26 +214,85 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
     fetchData();
   }, [id]);
 
+  const selectedDateObj = schedulesData[currentMonthKey]?.[selectedDateIndex];
+  const isTodayLesson = (() => {
+    if (!selectedDateObj) return false;
+    const d = convertToDate(selectedDateObj);
+    if (!d) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d.getTime() === today.getTime();
+  })();
+
+  useEffect(() => {
+    if (!selectedDateObj) return;
+
+    const selectedDate = convertToDate(selectedDateObj);
+    if (!selectedDate) return;
+
+    // Find a lesson matching the selected date (year, month, day)
+    const matchedLesson = lessonsList.find(lesson => {
+      const lessonDate = new Date(lesson.created_at);
+      return lessonDate.getFullYear() === selectedDate.getFullYear() &&
+             lessonDate.getMonth() === selectedDate.getMonth() &&
+             lessonDate.getDate() === selectedDate.getDate();
+    });
+
+    if (matchedLesson) {
+      setSavedLessonId(matchedLesson.id);
+      setTopic(matchedLesson.topic || "");
+      setDescription(matchedLesson.description || "");
+      
+      // Build attendanceState from matchedLesson.attendances
+      const newAttendanceState = {};
+      if (Array.isArray(matchedLesson.attendances)) {
+        matchedLesson.attendances.forEach(att => {
+          newAttendanceState[att.student_id] = att.isPresent;
+        });
+      }
+      // Make sure all students have a default if not found
+      students.forEach(st => {
+        if (newAttendanceState[st.id] === undefined) {
+          newAttendanceState[st.id] = false;
+        }
+      });
+      setAttendanceState(newAttendanceState);
+    } else {
+      setSavedLessonId(null);
+      setTopic("");
+      setDescription("");
+      
+      // Default all students to present for a new unsaved lesson
+      const newAttendanceState = {};
+      students.forEach(st => {
+        newAttendanceState[st.id] = true;
+      });
+      setAttendanceState(newAttendanceState);
+    }
+  }, [selectedDateObj, lessonsList, students]);
+
   if (loading) {
-    return <div className="p-8 text-center text-slate-500">Yuklanmoqda...</div>;
+    return <div className="p-8 text-center text-slate-500">{t("common.loading", "Yuklanmoqda...")}</div>;
   }
 
   if (!group) {
     return (
       <div className="p-8 text-center">
-        <p className="text-slate-500 mb-4">Guruh topilmadi.</p>
+        <p className="text-slate-500 mb-4">{t("common.no_data", "Guruh topilmadi.")}</p>
         <button onClick={() => navigate("/my-groups/chapters")} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold">
-          Ortga qaytish
+          {t("group_details.back", "Ortga qaytish")}
         </button>
       </div>
     );
   }
 
   const handleSaveTopic = async () => {
-    if (!topic || isSubmittingTopic || savedLessonId || isPastDate) return;
+    if (!topic || isSubmittingTopic || savedLessonId || !isTodayLesson) return;
     setIsSubmittingTopic(true);
     try {
       const token = localStorage.getItem("token");
+      const dateToSave = selectedDateObj ? convertToDate(selectedDateObj) : new Date();
+      
       const res = await fetch("/api/v1/lessons", {
         method: "POST",
         headers: {
@@ -226,7 +303,8 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
         body: JSON.stringify({
           group_id: Number(id),
           topic,
-          description
+          description,
+          created_at: dateToSave ? dateToSave.toISOString() : undefined
         })
       });
       if (res.ok) {
@@ -240,13 +318,11 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
 
         setSavedLessonId(lessonId);
 
-        const attendanceEntries = students
-          .filter(student => attendanceState[student.id])
-          .map(student => ({
-            lesson_id: lessonId,
-            student_id: Number(student.id),
-            isPresent: true
-          }));
+        const attendanceEntries = students.map(student => ({
+          lesson_id: lessonId,
+          student_id: Number(student.id),
+          isPresent: Boolean(attendanceState[student.id])
+        }));
 
         if (lessonId && attendanceEntries.length > 0) {
           const attendanceResults = await Promise.allSettled(
@@ -272,6 +348,16 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
 
         showNotification("Muvaffaqiyatli saqlandi!", "success");
         // We do not clear the topic and description so they know what they are marking attendance for
+        
+        // Refresh lessons list
+        const resLessons = await fetch(`/api/v1/lessons/group/${id}`, {
+          headers: {
+            "accept": "*/*",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const dataLessons = await resLessons.json();
+        setLessonsList(dataLessons.success ? (dataLessons.data || []) : []);
       } else {
         const data = await res.json();
         showNotification("Xatolik: " + (data.message || "Xatolik yuz berdi"), "error");
@@ -285,7 +371,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
   };
 
   const handleToggleAttendance = (studentId) => {
-    if (savedLessonId || isPastDate) return;
+    if (savedLessonId || !isTodayLesson) return;
     const currentState = attendanceState[studentId] || false;
     setAttendanceState(prev => ({ ...prev, [studentId]: !currentState }));
   };
@@ -346,8 +432,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
     }
   };
 
-  const selectedDateObj = schedulesData[currentMonthKey]?.[selectedDateIndex];
-  const isPastDate = selectedDateObj ? getDateStatus(selectedDateObj) === 'past' : false;
+
 
   const groupTeachersList = group.groupTeachers?.map(gt => gt.teacher).filter(Boolean) || (group.teachers ? [group.teachers] : []);
 
@@ -375,29 +460,33 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
             {group.name}
             {(group.status === "ACTIVE" || group.isActive) && (
               <span className="px-2.5 py-0.5 rounded-[6px] bg-green-50 text-green-500 text-[10px] font-bold uppercase tracking-wider border border-green-100">
-                AKTIV
+                {t("group_details.active", "AKTIV")}
               </span>
             )}
           </h1>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors">
           <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-          Statistika
+          {t("group_details.statistics", "Statistika")}
         </button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-8 border-b border-gray-100 mb-6 px-2">
-        {["Ma'lumotlar", "Guruh darsliklari", "Akademik davomati"].map(tab => (
+        {[
+          { key: "Ma'lumotlar", label: t("group_details.tabs.info", "Ma'lumotlar") },
+          { key: "Guruh darsliklari", label: t("group_details.tabs.lessons", "Guruh darsliklari") },
+          { key: "Akademik davomati", label: t("group_details.tabs.attendance", "Akademik davomati") },
+        ].map(tab => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
             className={`pb-4 text-[13px] font-extrabold transition-all relative ${
-              activeTab === tab ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"
+              activeTab === tab.key ? "text-emerald-500" : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            {tab}
-            {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-md" />}
+            {tab.label}
+            {activeTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-md" />}
           </button>
         ))}
       </div>
@@ -414,7 +503,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                   className="bg-[#2A72D6] px-5 py-3 flex items-center justify-between cursor-pointer"
                   onClick={() => setIsMentorsExpanded(!isMentorsExpanded)}
                 >
-                  <h3 className="text-white text-[15px] font-bold">Guruh mentorlari</h3>
+                  <h3 className="text-white text-[15px] font-bold">{t("group_details.mentors_title", "Guruh mentorlari")}</h3>
                   <button className="text-white hover:bg-white/20 p-1 rounded transition-colors">
                     <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className={`transition-transform duration-300 ${isMentorsExpanded ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                   </button>
@@ -446,7 +535,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                       </div>
                     ))}
                     {groupTeachersList.length === 0 && (
-                      <p className="text-sm text-slate-500">O'qituvchilar biriktirilmagan</p>
+                      <p className="text-sm text-slate-500">{t("group_details.no_teachers", "O'qituvchilar biriktirilmagan")}</p>
                     )}
                   </div>
                 </div>
@@ -461,7 +550,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                 className="bg-[#2A72D6] px-5 py-3 flex items-center justify-between cursor-pointer"
                 onClick={() => setIsParamsExpanded(!isParamsExpanded)}
               >
-                <h3 className="text-white text-[15px] font-bold">Parametrlar</h3>
+                <h3 className="text-white text-[15px] font-bold">{t("group_details.params_title", "Parametrlar")}</h3>
                 <button className="text-white hover:bg-white/20 p-1 rounded transition-colors">
                   <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className={`transition-transform duration-300 ${isParamsExpanded ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </button>
@@ -470,33 +559,33 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                 <div className="p-6">
                   <div className="space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">Filial:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.branch", "Filial")}:</span>
                     <span className="text-[13px] font-bold text-[#2A72D6]">{group.branch?.name || group.rooms?.name || "—"}</span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">Kurs:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.course", "Kurs")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">{group.courses?.name || "—"}</span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">Turi:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.type", "Turi")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">{group.type || "BOOTCAMP"}</span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">Kategoriya:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.category", "Kategoriya")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">{group.category || "Programming"}</span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">O'quvchilar sig'imi:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.capacity", "O'quvchilar sig'imi")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">{group.max_student || group.capacity || 20}</span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">Mavjud o'quvchilar:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.enrolled", "Mavjud o'quvchilar")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">
                       {Array.isArray(group.students) ? group.students.length : group.students_count || group.studentCount || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">O'quv oyidagi darslar soni:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.monthly_lessons", "O'quv oyidagi darslar soni")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">
                       {schedulesData && currentMonthKey && schedulesData[currentMonthKey]
                         ? schedulesData[currentMonthKey].length
@@ -504,11 +593,11 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     </span>
                   </div>
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <span className="text-[13px] font-medium text-slate-500">Kurs davomiyligi (oy):</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.duration_months", "Kurs davomiyligi (oy)")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">{group.courses?.duration_month || "—"}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-slate-500">Jami darslar soni:</span>
+                    <span className="text-[13px] font-medium text-slate-500">{t("group_details.total_lessons", "Jami darslar soni")}:</span>
                     <span className="text-[13px] font-bold text-slate-800">
                       {schedulesData && Object.keys(schedulesData).length > 0
                         ? Object.values(schedulesData).reduce((sum, list) => sum + (list?.length || 0), 0)
@@ -517,13 +606,12 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                   </div>
                 </div>
               </div>
-              </div>
             </div>
           </div>
-
+        </div>
           {/* Dars Jadvali */}
           <div className="bg-white rounded-[12px] border border-gray-200 shadow-sm p-6">
-            <h3 className="text-[16px] font-bold text-slate-900 mb-4">Dars jadvali</h3>
+            <h3 className="text-[16px] font-bold text-slate-900 mb-4">{t("group_details.schedule_title", "Dars jadvali")}</h3>
             <div className="space-y-2 mb-4">
               {(() => {
                 const allLessons = [];
@@ -545,10 +633,10 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
 
                 if (!showAllLessons) {
                   return groupTeachersList.length > 0 ? (
-                    groupTeachersList.map((t, idx) => (
-                      <div key={t.id || idx} className="flex items-center justify-between p-4 rounded-lg bg-[#F8FAFC] border border-gray-100">
+                    groupTeachersList.map((tTeacher, idx) => (
+                      <div key={tTeacher.id || idx} className="flex items-center justify-between p-4 rounded-lg bg-[#F8FAFC] border border-gray-100">
                         <span className="text-[#00A1D6] font-bold text-[13px] w-1/4">
-                          {`${t.first_name || ""} ${t.last_name || ""}`.trim() || "—"}
+                          {`${tTeacher.first_name || ""} ${tTeacher.last_name || ""}`.trim() || "—"}
                         </span>
                         <span className="text-slate-600 font-medium text-[13px] w-1/4">
                           {formatWeekdays(group.week_day)}
@@ -567,7 +655,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                   ) : (
                     <div className="flex items-center justify-between p-4 rounded-lg bg-[#F8FAFC] border border-gray-100">
                       <span className="text-slate-400 font-bold text-[13px] w-1/4">
-                        O'qituvchi biriktirilmagan
+                        {t("group_details.no_teachers", "O'qituvchi biriktirilmagan")}
                       </span>
                       <span className="text-slate-600 font-medium text-[13px] w-1/4">
                         {formatWeekdays(group.week_day)}
@@ -588,7 +676,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     upcomingLessons.map((l) => (
                       <div key={l.id} className="flex items-center justify-between p-4 rounded-lg bg-emerald-50/30 border border-emerald-100 hover:bg-emerald-50/50 transition-colors">
                         <span className="text-emerald-600 font-bold text-[13px] w-1/4">
-                          Dars #{l.id}
+                          {t("group_details.lesson", "Dars")} #{l.id}
                         </span>
                         <span className="text-slate-600 font-medium text-[13px] w-1/4">
                           {l.dateObj ? ['Yak', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'][l.dateObj.getDay()] : "—"}
@@ -606,7 +694,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     ))
                   ) : (
                     <div className="p-4 text-center text-slate-500 text-sm">
-                      Kelajakda boladigan darslar mavjud emas
+                      {t("group_details.no_upcoming_lessons", "Kelajakda boladigan darslar mavjud emas")}
                     </div>
                   );
                 }
@@ -636,7 +724,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     onClick={() => setShowAllLessons(!showAllLessons)}
                     className="px-4 py-1.5 border border-gray-200 rounded-lg text-[13px] font-bold text-slate-600 hover:bg-gray-50 transition-colors shadow-sm"
                   >
-                    {showAllLessons ? "Yopish" : `Yana ko'rsatish (${upcomingLessons.length})`}
+                    {showAllLessons ? t("group_details.close", "Yopish") : `${t("group_details.show_more", "Yana ko'rsatish")} (${upcomingLessons.length})`}
                   </button>
                 ) : null;
               })()}
@@ -661,7 +749,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     >
                       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
-                    <span className="text-[14px] font-bold text-slate-700">{currentMonthKey || "1"}-o'quv oyi</span>
+                    <span className="text-[14px] font-bold text-slate-700">{currentMonthKey || "1"}{t("group_details.study_month", "-o'quv oyi")}</span>
                     <button 
                       className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-slate-400 hover:bg-gray-50 disabled:opacity-50"
                       disabled={!schedulesData || Object.keys(schedulesData).indexOf(currentMonthKey) === Object.keys(schedulesData).length - 1}
@@ -681,15 +769,18 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     {(schedulesData[currentMonthKey] || []).map((d, i) => {
                       const isActive = i === selectedDateIndex;
                       const dateStatus = getDateStatus(d);
+                      const isFuture = dateStatus === 'future' || dateStatus === 'next-lesson';
                       
                       let buttonClass = '';
-                      if (isActive && (dateStatus === 'today-lesson' || dateStatus === 'next-lesson')) {
+                      if (isFuture) {
+                        buttonClass = "bg-gray-200 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60";
+                      } else if (isActive && dateStatus === 'today-lesson') {
                         buttonClass = "bg-emerald-500 text-white";
                       } else if (isActive) {
                         buttonClass = "bg-emerald-500 text-white";
                       } else if (dateStatus === 'past') {
                         buttonClass = "bg-gray-400 text-white";
-                      } else if (dateStatus === 'today-lesson' || dateStatus === 'next-lesson') {
+                      } else if (dateStatus === 'today-lesson') {
                         buttonClass = "bg-emerald-500 text-white";
                       } else {
                         buttonClass = "bg-white text-slate-600 border border-gray-200 hover:bg-gray-50";
@@ -698,7 +789,8 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                       return (
                         <button 
                           key={i} 
-                          onClick={() => setSelectedDateIndex(i)}
+                          onClick={() => { if (!isFuture) setSelectedDateIndex(i); }}
+                          disabled={isFuture}
                           className={`flex flex-col items-center justify-center min-w-[50px] h-12 rounded-[8px] transition-colors ${buttonClass}`}
                         >
                           <span className="text-[9px] font-bold">{d.month}</span>
@@ -712,7 +804,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                       className="px-4 py-1.5 border border-gray-200 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-gray-50 transition-colors"
                       onClick={() => setShowAllMonths(true)}
                     >
-                      Barchasini ko'rish
+                      {t("common.view_all", "Barchasini ko'rish")}
                     </button>
                   </div>
                 </>
@@ -724,15 +816,18 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
               <div className="space-y-6 mt-6 transition-all duration-300">
                 {Object.keys(schedulesData).map(monthKey => (
                   <div key={monthKey}>
-                    <h4 className="text-[14px] font-bold text-slate-700 mb-3">{monthKey}-o'quv oyi</h4>
+                    <h4 className="text-[14px] font-bold text-slate-700 mb-3">{monthKey}{t("group_details.study_month", "-o'quv oyi")}</h4>
                     <div className="flex gap-2 flex-wrap">
                       {(schedulesData[monthKey] || []).map((d, i) => {
                         const dateStatus = getDateStatus(d);
+                        const isFuture = dateStatus === 'future' || dateStatus === 'next-lesson';
                         
                         let buttonClass = '';
-                        if (dateStatus === 'past') {
+                        if (isFuture) {
+                          buttonClass = "bg-gray-200 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60";
+                        } else if (dateStatus === 'past') {
                           buttonClass = "bg-gray-400 text-white";
-                        } else if (dateStatus === 'today-lesson' || dateStatus === 'next-lesson') {
+                        } else if (dateStatus === 'today-lesson') {
                           buttonClass = "bg-emerald-500 text-white";
                         } else {
                           buttonClass = "bg-white text-slate-600 border border-gray-200 hover:bg-gray-50";
@@ -740,11 +835,14 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                         
                         return (
                           <button 
-                            key={i}
+                            key={i} 
+                            disabled={isFuture}
                             onClick={() => {
-                              setCurrentMonthKey(monthKey);
-                              setSelectedDateIndex(i);
-                              setShowAllMonths(false);
+                              if (!isFuture) {
+                                setCurrentMonthKey(monthKey);
+                                setSelectedDateIndex(i);
+                                setShowAllMonths(false);
+                              }
                             }}
                             className={`flex flex-col items-center justify-center min-w-[50px] h-12 rounded-[8px] transition-colors ${buttonClass}`}
                           >
@@ -761,7 +859,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                     className="px-4 py-1.5 border border-gray-200 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-gray-50 transition-colors"
                     onClick={() => setShowAllMonths(false)}
                   >
-                    Yopish
+                    {t("group_details.close", "Yopish")}
                   </button>
                 </div>
               </div>
@@ -782,7 +880,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
 
               {/* Ma'lumot Card */}
               <div className="bg-[#F8FAFC] rounded-[16px] p-3 mb-4 inline-block min-w-[400px]">
-                <h4 className="text-[14px] font-bold text-slate-900 mb-2">Ma'lumot</h4>
+                <h4 className="text-[14px] font-bold text-slate-900 mb-2">{t("dashboard.info", "Ma'lumot")}</h4>
                 <div className="flex items-center gap-4 mb-3">
                   {getPhotoUrl(displayTeacherPhoto) ? (
                     <img 
@@ -808,23 +906,23 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                 </div>
                 <div className="flex items-center justify-between bg-white rounded-lg p-2">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-medium">Dars kuni</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{t("dashboard.lesson_day", "Dars kuni")}</p>
                     <p className="text-[12px] font-bold text-slate-800">
                       {selectedDateObj ? convertToDate(selectedDateObj).toLocaleDateString("uz-UZ", { day: "numeric", month: "short", year: "numeric" }) : (group.start_date ? new Date(group.start_date).toLocaleDateString("uz-UZ", { day: "numeric", month: "short", year: "numeric" }) : "—")}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-medium">Dars vaqti</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{t("dashboard.lesson_time", "Dars vaqti")}</p>
                     <p className="text-[12px] font-bold text-slate-800">{group.start_time || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-medium">Kunlar</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{t("groups.lesson_days", "Kunlar")}</p>
                     <p className="text-[12px] font-bold text-slate-800">
                       {(group.week_day || []).map(d => d.substring(0, 2)).join("/") || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-medium">Xona</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{t("table.room", "Xona")}</p>
                     <p className="text-[12px] font-bold text-slate-800">{group.rooms?.name || "—"}</p>
                   </div>
                 </div>
@@ -835,35 +933,35 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
               </h2>
               
               <div className="mb-6">
-                <h3 className="text-[16px] font-bold text-slate-900 mb-4">Yo'qlama va mavzu kiritish</h3>
+                <h3 className="text-[16px] font-bold text-slate-900 mb-4">{t("group_details.attendance_title", "Yo'qlama va mavzu kiritish")}</h3>
                 <div className="flex items-center gap-6 mb-6">
                   <label className="flex items-center gap-2 cursor-pointer opacity-50">
                     <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
-                    <span className="text-[14px] text-slate-600 font-medium">O'quv reja bo'yicha</span>
+                    <span className="text-[14px] text-slate-600 font-medium">{t("group_details.by_curriculum", "O'quv reja bo'yicha")}</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <div className="w-4 h-4 rounded-full border-4 border-emerald-500 bg-white"></div>
-                    <span className="text-[14px] text-emerald-500 font-bold">Boshqa</span>
+                    <span className="text-[14px] text-emerald-500 font-bold">{t("group_details.other", "Boshqa")}</span>
                   </label>
                 </div>
                 <div className="mb-4 max-w-md">
-                  <label className="block text-[12px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> Mavzu</label>
+                  <label className="block text-[12px] font-bold text-slate-700 mb-2"><span className="text-red-500">*</span> {t("courses.name", "Mavzu")}</label>
                   <input 
                     type="text" 
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    disabled={Boolean(savedLessonId) || isPastDate}
-                    placeholder={isPastDate ? "O'tgan darslar uchun mavzu kiritib bo'lmaydi" : "Mavzu nomini kiriting"}
+                    disabled={Boolean(savedLessonId) || !isTodayLesson}
+                    placeholder={!isTodayLesson ? t("group_details.only_lesson_day", "Faqat dars kunida yo'qlama qilish mumkin") : t("group_details.enter_topic", "Mavzu nomini kiriting")}
                     className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-[14px] text-slate-600 font-medium focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed" 
                   />
                 </div>
                 <div className="mb-6 max-w-md">
-                  <label className="block text-[12px] font-bold text-slate-700 mb-2">Tavsif</label>
+                  <label className="block text-[12px] font-bold text-slate-700 mb-2">{t("courses.description", "Tavsif")}</label>
                   <textarea 
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    disabled={Boolean(savedLessonId) || isPastDate}
-                    placeholder={isPastDate ? "O'tgan darslar uchun tavsif kiritib bo'lmaydi" : "Mavzu tavsifini kiriting"}
+                    disabled={Boolean(savedLessonId) || !isTodayLesson}
+                    placeholder={!isTodayLesson ? t("group_details.only_lesson_day_desc", "Faqat dars kunida tavsif kiritish mumkin") : t("group_details.enter_desc", "Mavzu tavsifini kiriting")}
                     className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-[14px] text-slate-600 font-medium focus:outline-none focus:border-emerald-500 transition-colors min-h-[100px] disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed" 
                   ></textarea>
                 </div>
@@ -875,38 +973,41 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
                   <thead>
                     <tr className="border-b border-gray-100">
                       <th className="py-3 px-4 text-[13px] font-bold text-slate-600 w-16">#</th>
-                      <th className="py-3 px-4 text-[13px] font-bold text-slate-600">O'quvchi ismi</th>
-                      <th className="py-3 px-4 text-[13px] font-bold text-slate-600 w-32 text-center">Vaqti</th>
-                      <th className="py-3 px-4 text-[13px] font-bold text-slate-600 w-24 text-center">Keldi</th>
+                      <th className="py-3 px-4 text-[13px] font-bold text-slate-600">{t("common.student", "O'quvchi ismi")}</th>
+                      <th className="py-3 px-4 text-[13px] font-bold text-slate-600 w-32 text-center">{t("common.time", "Vaqti")}</th>
+                      <th className="py-3 px-4 text-[13px] font-bold text-slate-600 w-24 text-center">{t("group_details.attended", "Keldi")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {students.length > 0 ? students.map((st, idx) => {
-                      const isPresent = attendanceState[st.id] || false;
-                      return (
-                      <tr key={st.id || idx} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4 px-4 text-[13px] font-medium text-slate-900">{idx + 1}</td>
-                        <td className="py-4 px-4 text-[13px] font-bold text-slate-900">
-                          {st.first_name} {st.last_name || ""}
-                        </td>
-                        <td className="py-4 px-4 text-[13px] font-medium text-slate-600 text-center">{group.start_time || "09:30"}</td>
-                        <td className="py-4 px-4">
-                          <div className="flex justify-center">
-                            <div 
-                              onClick={() => handleToggleAttendance(st.id)}
-                              className={`w-10 h-5 rounded-full p-0.5 flex items-center transition-all ${
-                                (savedLessonId || isPastDate) ? "cursor-not-allowed opacity-70" : "cursor-pointer"
-                              } ${isPresent ? "bg-emerald-500 justify-end" : "bg-gray-200 justify-start"}`}
-                            >
-                              <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}) : (
+                    {students.length > 0 ? (
+                      students.map((st, idx) => {
+                        const isPresent = attendanceState[st.id] || false;
+                        return (
+                          <tr key={st.id || idx} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors">
+                            <td className="py-4 px-4 text-[13px] font-medium text-slate-900">{idx + 1}</td>
+                            <td className="py-4 px-4 text-[13px] font-bold text-slate-900">
+                              {st.first_name} {st.last_name || ""}
+                            </td>
+                            <td className="py-4 px-4 text-[13px] font-medium text-slate-600 text-center">{group.start_time || "09:30"}</td>
+                            <td className="py-4 px-4">
+                              <div className="flex justify-center">
+                                <div 
+                                  onClick={() => handleToggleAttendance(st.id)}
+                                  className={`w-10 h-5 rounded-full p-0.5 flex items-center transition-all ${
+                                    (savedLessonId || !isTodayLesson) ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                                  } ${isPresent ? "bg-emerald-500 justify-end" : "bg-gray-200 justify-start"}`}
+                                >
+                                  <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
                       <tr>
                         <td colSpan="4" className="py-6 text-center text-sm text-slate-500">
-                          Bu guruhda o'quvchilar yo'q.
+                          {t("group_details.no_students", "Bu guruhda o'quvchilar yo'q.")}
                         </td>
                       </tr>
                     )}
@@ -917,10 +1018,10 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
               <div className="mt-8 flex justify-end border-t border-gray-100 pt-6">
                 <button 
                   onClick={handleSaveTopic}
-                  disabled={isSubmittingTopic || !topic || Boolean(savedLessonId) || isPastDate}
+                  disabled={isSubmittingTopic || !topic || Boolean(savedLessonId) || !isTodayLesson}
                   className="px-8 py-2.5 bg-emerald-500 text-white rounded-lg text-[14px] font-bold hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {savedLessonId ? "Dars allaqachon saqlangan" : isPastDate ? "O'tgan kunlar uchun yo'qlama qilib bo'lmaydi" : isSubmittingTopic ? "Saqlanmoqda..." : "Saqlash"}
+                  {savedLessonId ? t("group_details.already_saved", "Dars allaqachon saqlangan") : !isTodayLesson ? t("group_details.only_lesson_day", "Faqat dars kunida yo'qlama qilish mumkin") : isSubmittingTopic ? t("common.loading", "Saqlanmoqda...") : t("common.save", "Saqlash")}
                 </button>
               </div>
 
@@ -941,7 +1042,7 @@ export default function GroupDetails({ id, user, urlHomeworkId }) {
 
       {activeTab === "Akademik davomati" && (
         <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm text-center text-slate-500 text-sm">
-          Tez kunda...
+          {t("group_details.coming_soon", "Tez kunda...")}
         </div>
       )}
       <Snackbar

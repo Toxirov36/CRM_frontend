@@ -1,21 +1,23 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import studyImg from "../images/studyguy.png";
+import { useLanguage } from "../context/language-context";
+import LanguageDropdown from "../components/LanguageDropdown";
 
 export default function Login({ onLogin }) {
-  const [loading, setLoading] = useState(false)
+  const { t } = useLanguage();
+  const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-
     if (!username.trim()) {
-      setError("Telefon raqamni kiriting");
+      setError(t("login.phone_required", "Telefon raqamni kiriting"));
       return;
     }
     if (!password.trim()) {
-      setError("Parolni kiriting");
+      setError(t("login.password_required", "Parolni kiriting"));
       return;
     }
 
@@ -52,6 +54,9 @@ export default function Login({ onLogin }) {
         role: decoded.role || "USER",
       };
       localStorage.setItem("token", data.accessToken);
+      if (data.refreshToken) {
+        localStorage.setItem("refreshToken", data.refreshToken);
+      }
       localStorage.setItem("user", JSON.stringify(userData));
       onLogin(userData);
 
@@ -218,18 +223,35 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="flex min-h-screen font-sans">
-      {/* LEFT SIDE */}
+    <div className="flex min-h-screen font-sans relative">
+      {/* LANGUAGE SELECTOR */}
+      <div className="absolute top-5 right-5 z-20">
+        <LanguageDropdown />
+      </div>
+
+      {/* LEFT SIDE (ILLUSTRATION) */}
+      <div
+        className="flex-1 hidden md:flex items-center justify-center relative overflow-hidden"
+        style={{
+          background: "#6d28d9",
+        }}
+      >
+        <div>
+          <img src={studyImg} alt="studyImg" />
+        </div>
+      </div>
+
+      {/* RIGHT SIDE (LOGIN FORM) */}
       <div className="flex-1 flex items-center justify-center bg-white px-10 py-12">
         <div className="w-full max-w-sm">
           {/* Title */}
-          <h1 className="text-3xl font-black text-gray-900 tracking-widest mb-8 text-center">
-            {view === "login" ? "LOGIN" : "RESET PASSWORD"}
+          <h1 className="text-3xl font-black text-gray-900 tracking-widest mb-8 text-center uppercase">
+            {view === "login" ? t("login.title", "Tizimga kirish") : t("login.reset_title", "Parolni tiklash")}
           </h1>
 
           {view === "login" ? (
             <>
-              <p className="text-center text-sm text-gray-500 mb-4">Welcome Back!</p>
+              <p className="text-center text-sm text-gray-500 mb-4">{t("login.subtitle", "ApexEdu LMS")}</p>
 
               {/* USERNAME */}
               <div className="flex items-center bg-indigo-50 rounded-xl px-4 py-3 mb-4 gap-3">
@@ -249,7 +271,7 @@ export default function Login({ onLogin }) {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Username"
+                  placeholder={t("login.phone_placeholder", "+998 90 123 45 67")}
                   className="w-full bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -274,7 +296,7 @@ export default function Login({ onLogin }) {
                 </svg>
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder={t("login.password_placeholder", "Parolingizni kiriting")}
                   className="w-full bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400 pr-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -300,7 +322,7 @@ export default function Login({ onLogin }) {
                   onClick={() => handleSwitchView("forgot")}
                   className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors duration-200 cursor-pointer"
                 >
-                  Parolni unutdingizmi?
+                  {t("login.forgot_password", "Parolni unutdingizmi?")}
                 </button>
               </div>
 
@@ -310,9 +332,9 @@ export default function Login({ onLogin }) {
                 className="w-full py-3 rounded-xl text-white font-semibold text-sm
                   bg-gradient-to-r from-violet-500 to-indigo-500
                   hover:from-violet-600 hover:to-indigo-600
-                  shadow-md hover:shadow-lg transition-all duration-200 mb-6"
+                  shadow-md hover:shadow-lg transition-all duration-200 mb-6 cursor-pointer"
               >
-                Login Now
+                {loading ? t("login.loading", "Kirilmoqda...") : t("login.submit", "Kirish")}
               </button>
 
               {/* DIVIDER */}
@@ -321,8 +343,8 @@ export default function Login({ onLogin }) {
               </p>
 
               {/* GOOGLE */}
-              <button
-                onClick={() => window.location.href = "http://localhost:3000/api/v1/auth/google"}
+              {import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true" && <button
+                onClick={() => window.location.href = "/api/v1/auth/google"}
                 className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl mb-3 hover:bg-gray-50 transition-colors duration-200 text-sm text-gray-700 cursor-pointer"
               >
                 <img
@@ -331,7 +353,7 @@ export default function Login({ onLogin }) {
                   alt="Google"
                 />
                 Login with <span className="font-bold">Google</span>
-              </button>
+              </button>}
             </>
           ) : (
             <>
@@ -522,19 +544,6 @@ export default function Login({ onLogin }) {
           )}
         </div>
       </div>
-
-      {/* RIGHT SIDE */}
-      <div
-        className="flex-1 hidden md:flex items-center justify-center relative overflow-hidden"
-        style={{
-          background: "#6d28d9",
-        }}
-      >
-        <div>
-          <img src={studyImg} alt="studyImg" />
-        </div>
-      </div>
     </div>
   );
 }
-
